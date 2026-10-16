@@ -45,13 +45,13 @@ from harness import Claims, launch  # noqa: E402
 
 CORE = sys.argv[1]
 
-# Present on every macOS since forever. The list allows the first and omits the
-# second, so the second is the one that proves the filter runs.
-ALLOWED = "Georgia"
-WITHHELD = "Papyrus"
+# Measure availability before selecting controls on macOS, Windows or Linux.
+CANDIDATES = [
+    "Georgia", "Papyrus", "Arial", "Times New Roman", "Verdana",
+    "Liberation Serif", "Liberation Sans", "DejaVu Serif", "DejaVu Sans",
+    "Noto Serif", "Noto Sans",
+]
 NOWHERE = "Fury Nonexistent Family 9182"
-
-FONTS = ["Georgia", "Arial", "Times New Roman", "Courier New", "Verdana"]
 
 # The width comparison every library uses.
 PROBE = """
@@ -86,43 +86,48 @@ PROBE = """
   };
   return JSON.stringify(out);
 })()
-""" % {"families": json.dumps([ALLOWED, WITHHELD, NOWHERE])}
+"""
+
+
+def probe(families):
+    return PROBE % {"families": json.dumps(families)}
 
 
 def main():
     claims = Claims("0050 — font fallback filter", CORE)
 
-    # Establish first that this machine actually has both, or the test below
-    # would pass on a Mac that simply lacks Papyrus.
+    # Both controls must resolve before filtering, or hiding one proves nothing.
     with launch(CORE, None) as s:
-        bare = json.loads(s.js(PROBE))
-        print(f"  unconfigured: {ALLOWED}={bare[ALLOWED]['resolved']} "
-              f"{WITHHELD}={bare[WITHHELD]['resolved']} "
+        bare = json.loads(s.js(probe(CANDIDATES + [NOWHERE])))
+        available = [name for name in CANDIDATES if bare[name]["resolved"]]
+        if len(available) < 2:
+            print("\nFAIL — this machine needs two measurable installed font "
+                  f"families for the allow/withhold control (got {available}).")
+            return 1
+        allowed, withheld = available[:2]
+        fonts = [allowed]
+        print(f"  unconfigured: {allowed}={bare[allowed]['resolved']} "
+              f"{withheld}={bare[withheld]['resolved']} "
               f"{NOWHERE}={bare[NOWHERE]['resolved']}")
 
-        if not bare[WITHHELD]["resolved"]:
-            print(f"\nFAIL — this machine does not have {WITHHELD}, so the test "
-                  f"below would pass for the wrong reason. Pick a family it has.")
-            return 1
-
         claims.control(
-            bare[ALLOWED]["resolved"] and bare[WITHHELD]["resolved"]
+            bare[allowed]["resolved"] and bare[withheld]["resolved"]
             and not bare[NOWHERE]["resolved"],
-            f"an unconfigured build resolves both {ALLOWED} and {WITHHELD} and "
+            f"an unconfigured build resolves both {allowed} and {withheld} and "
             f"not a family that exists nowhere — so this machine can tell the "
             f"three apart",
         )
 
-    with launch(CORE, {"fonts": FONTS}) as s:
-        got = json.loads(s.js(PROBE))
-        print(f"  filtered:     {ALLOWED}={got[ALLOWED]['resolved']} "
-              f"{WITHHELD}={got[WITHHELD]['resolved']} "
+    with launch(CORE, {"fonts": fonts}) as s:
+        got = json.loads(s.js(probe([allowed, withheld, NOWHERE])))
+        print(f"  filtered:     {allowed}={got[allowed]['resolved']} "
+              f"{withheld}={got[withheld]['resolved']} "
               f"{NOWHERE}={got[NOWHERE]['resolved']}")
 
-        claims.check(got[ALLOWED]["resolved"],
-                     f"{ALLOWED} is in the list and still resolves")
-        claims.check(not got[WITHHELD]["resolved"],
-                     f"{WITHHELD} is installed on this machine but not in the "
+        claims.check(got[allowed]["resolved"],
+                     f"{allowed} is in the list and still resolves")
+        claims.check(not got[withheld]["resolved"],
+                     f"{withheld} is installed on this machine but not in the "
                      f"list, and no longer resolves — which is the filter doing "
                      f"its whole job")
         claims.check(not got[NOWHERE]["resolved"],

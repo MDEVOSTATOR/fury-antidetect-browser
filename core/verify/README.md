@@ -33,3 +33,15 @@ never uses answers questions nobody asked. Park the window off-screen
 Watch what the harness itself changes. `Browser.grantPermissions` *replaces* an
 origin's permissions — everything not in the list becomes denied — which cost a
 rebuild spent blaming patch 0090 for a result the test had caused.
+
+
+## Linux controls
+
+Use the installed core at /usr/lib/fury-core/chrome in a headed session with
+an unlocked Secret Service. The Linux run and its measured limits are recorded
+in [docs/20](../../docs/20-linux-port.md#расширенный-прогон-16102026).
+0050 selects two measured available font families, 0131 accounts for classic
+scrollbars, and 0900 checks the executable's version on Linux while retaining
+the app-bundle checks on macOS. 0131-dpr requires a 2x baseline display; virtual
+scaling is acceptable when explicitly recorded. Hardware-dependent controls
+must not be reported as passing when the host cannot exercise them.

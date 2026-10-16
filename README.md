@@ -3,67 +3,47 @@
   <img src="assets/logo.png" alt="Fury" width="420">
 </picture>
 
-**Linux fork:** this checkout adds an Ubuntu 24.04 x86_64 port based on Fury 0.4.5.
-The desktop and patched Chromium 155 core have been built, installed and tested
-on Linux (X11/Xvfb, SwiftShader). See [packages, setup and validation](docs/20-linux-port.md)
-for the verified scope and the Linux-specific zygote fix.
+# Fury for Linux
 
-A free, open-source anti-detect browser with real team collaboration. Own
-Chromium fork, works standalone with no server, self-hostable when you need a
-team. No seats, no per-profile pricing, no telemetry.
+An independent Linux port of [Fury](https://github.com/furyteamtop/fury-antidetect-browser),
+based on Fury 0.4.5 and patched Chromium 155.0.8059.39. The desktop application,
+agent and browser core have been built, installed and tested on Ubuntu 24.04 x86_64.
 
-**[furybrowser.dev](https://furybrowser.dev)** · *[Русская версия](README.ru.md)*
+**[Linux build and setup](docs/20-linux-port.md)** ·
+**[Русская версия](README.ru.md)** ·
+**[Upstream project](https://github.com/furyteamtop/fury-antidetect-browser)**
 
-> **Status: in development, and now on both macOS and Windows.** The core builds
-> and spoofs; the agent launches profiles; the server and desktop shell work.
-> Builds are on the [Releases](https://github.com/furyteamtop/fury-antidetect-browser/releases)
-> page, marked pre-release. **macOS builds are signed and notarised since
-> 21.09.2026; Windows is not** — see below.
->
-> **Windows works, as of 16.08.2026.** The Chromium core built (57 528 targets),
-> the agent runs on it, and `tools/verify-windows.ps1` passes 30 claims on a real
-> machine: the config reaches the browser as an inherited HANDLE, argv carries a
-> slot number and nothing else, no process in the tree has a persona string in
-> its command line, and the browser reports the persona's platform rather than
-> the host's. The desktop shell builds to an NSIS installer. This paragraph used
-> to say *not yet*, and it said so for as long as that was true.
->
-> Getting there found eight defects that only running could find — a BSD `df`
-> flag, a bootstrap that returned success having done nothing, CRLF making
-> `git apply` claim a patch was stale, PowerShell reading UTF-8 as
-> Windows-1252, a persona leaking through `--user-data-dir` into every child
-> process, and a `beforeBuildCommand` that cmd.exe could not execute. They are in
-> the history, one commit each, with what they cost.
->
-> **Team mode works end to end, as of 18.08.2026.** Invite, enrol on a second
-> machine, be let in with one button, send a profile to the server, open it
-> there. Every stage of that path had a defect and one of them — sending a
-> profile — had never worked at all: the fingerprint seed crossed as a number
-> where the server wants sixteen hex characters, so every upload since the
-> endpoint existed died in the request parser. They are in the history with what
-> each looked like from the operator's side.
->
-> **macOS is signed and notarised, as of 21.09.2026.** The Apple Developer
-> enrolment paid for on 15.08.2026 came through that day, and the same evening
-> the 0.1.4 macOS files were rebuilt with the Developer ID and re-uploaded:
-> the application, the core and the disk image each carry a stapled ticket,
-> and Gatekeeper's verdict on a machine that has never seen them is
-> `accepted, source=Notarized Developer ID`. Open the DMG, drag, open — no
-> right-click, no `xattr`. The first real run of
-> [sign-core.sh](tools/release/sign-core.sh) and
-> [sign-shell.sh](tools/release/sign-shell.sh) found five defects in the
-> scripts themselves, which is in the history; [docs/17](docs/17-apple-signing.md)
-> is the paperwork.
->
-> **Windows is not signed.** That is a separate certificate, not started, so
-> the installer shows SmartScreen: **More info → Run anyway**. A macOS download
-> of 0.1.3 or earlier is ad-hoc signed and needs `xattr -dr
-> com.apple.quarantine /Applications/Fury.app` once; [docs/15](docs/15-install.md)
-> walks through both.
->
-> **Linux:** upstream does not ship it; this fork's status is tracked in [docs/20](docs/20-linux-port.md).
->
-> Everything that is *not* done is listed at the bottom, honestly.
+## Linux port
+
+- Native Tauri desktop and agent, packaged as two matching Debian packages.
+- Chromium with 37 patches, including a Linux zygote fix that loads the profile
+  configuration in forked child processes while preserving the sandbox.
+- Linux persona capture and validation, Secret Service integration and per-profile
+  staging of Widevine from a locally installed Chrome.
+
+| Item | Status |
+|---|---|
+| Target platform | Ubuntu 24.04 x86_64 |
+| Desktop and browser | Built and tested under X11/Xvfb |
+| Graphics validation | SwiftShader; WebGL 1 and 2 |
+| Extended browser tests | 29 passed; 4 unverified due to test-host prerequisites ([details](docs/20-linux-port.md#расширенный-прогон-16102026)) |
+| Hardware GPU, Wayland, other distributions | Not yet verified |
+
+The default branch is **port/linux-x64**. This fork currently publishes source;
+Linux binary releases have not been uploaded. Follow the
+[build prerequisites and instructions](docs/20-linux-port.md#сборка) to produce
+the desktop and core packages in dist-linux/, then use
+[tools/linux/install.sh](tools/linux/install.sh) to verify checksums and install
+both packages. Launch the installed application with **fury-desktop**.
+
+For normal use, capture a persona from your own Linux machine through Settings.
+The bundled upstream persona catalogue contains Windows/macOS captures; the local
+SwiftShader QA persona is not a hardware profile. See
+[verification and limitations](docs/20-linux-port.md#проверка-и-ограничения).
+
+The sections below describe the upstream architecture and features, including
+Windows/macOS examples. Official Windows/macOS downloads are maintained in the
+[upstream releases](https://github.com/furyteamtop/fury-antidetect-browser/releases).
 
 ## Why another one
 

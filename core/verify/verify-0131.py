@@ -48,7 +48,8 @@ BARE = "<!doctype html><title>bare</title><p>no viewport meta"
 
 SIZES = """JSON.stringify({iw: innerWidth, ih: innerHeight, ow: outerWidth, oh: outerHeight,
   sw: screen.width, sh: screen.height, dpr: devicePixelRatio,
-  vw: visualViewport.width, orient: screen.orientation.type})"""
+  cw: document.documentElement.clientWidth, vw: visualViewport.width,
+  scale: visualViewport.scale, orient: screen.orientation.type})"""
 
 
 class Pages(http.server.BaseHTTPRequestHandler):
@@ -181,9 +182,14 @@ check(bare["ow"] == 384 and bare["oh"] == 832,
       f"pixels ({bare['ow']}x{bare['oh']})")
 check(clicked == 1 and d_clicked == 1,
       f"a real mouse click lands on the button under emulation (phone {clicked}, desktop {d_clicked})")
-check(browser_page["iw"] != 980 and abs(browser_page["iw"] - browser_page["vw"]) < 1,
+# Classic Linux/Windows scrollbars occupy layout space; overlay scrollbars do not.
+check(browser_page["iw"] != 980
+      and abs(browser_page["cw"] - browser_page["vw"]) < 1
+      and abs(browser_page["scale"] - 1) < 1e-6,
       f"chrome:// pages keep the desktop layout, not Android's 980 zoomed out "
-      f"({browser_page['iw']} wide, visual {browser_page['vw']}; 0134 makes the view phone-wide)")
+      f"({browser_page['iw']} wide, content {browser_page['cw']}, "
+      f"visual {browser_page['vw']}, scale {browser_page['scale']}; "
+      f"0134 makes the view phone-wide)")
 
 server.shutdown()
 bad = [t for ok, t in results if not ok]
