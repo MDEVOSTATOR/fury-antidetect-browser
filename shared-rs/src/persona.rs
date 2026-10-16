@@ -94,7 +94,7 @@ pub struct PersonaMobile {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PersonaOs {
-    /// "Windows" | "macOS" | "Android"
+    /// "Windows" | "macOS" | "Linux" | "Android"
     pub name: String,
     pub version: String,
     /// "x86_64" | "arm64"
@@ -102,7 +102,7 @@ pub struct PersonaOs {
     /// The UA string template, with {CHROME_MAJOR} substituted at derive time
     /// so a persona survives a Chromium uprev without being rewritten.
     pub user_agent_template: String,
-    /// navigator.platform: "Win32", "MacIntel", or "Linux armv81" and its
+    /// navigator.platform: "Win32", "MacIntel", "Linux x86_64", or "Linux armv81" and its
     /// siblings on Android (see `ANDROID_PLATFORMS`).
     pub platform: String,
     /// Sec-CH-UA-Platform.
