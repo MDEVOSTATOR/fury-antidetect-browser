@@ -25,7 +25,7 @@ type Row = {
   notes: string[];
 };
 
-const OS_PREFIX: Record<string, string> = { win: "Windows", mac: "macOS", android: "Android" };
+const OS_PREFIX: Record<string, string> = { win: "Windows", mac: "macOS", lin: "Linux", android: "Android" };
 
 /** What each source needs from the person. `local` is the address its API
  *  answers on when the app is running; null for a cloud API. */

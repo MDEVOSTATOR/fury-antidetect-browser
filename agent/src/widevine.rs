@@ -34,7 +34,7 @@
 //! for exactly this reason — see the note in `launcher::build_args`. Staging the
 //! file is half the job; not disabling the registration path is the other half.
 //!
-//! # Where it goes: the profile on macOS, beside the core elsewhere
+//! # Where it goes: the profile on macOS/Linux, beside the core on Windows
 //!
 //! On macOS the CDM used to go INTO the signed, notarised core bundle, beside
 //! where `bundle_widevine_cdm` would have put it. That breaks the bundle's seal,
@@ -53,6 +53,10 @@
 //! gets it there just before it launches (`stage_into_profile`), and the core
 //! is never written to. On APFS `fs::copy` is a clone, so 19 MB per profile
 //! costs nothing. Windows has no seal to break and keeps the core directory.
+//!
+//! Linux packages also keep the core immutable to the user, so Linux stages
+//! into each profile. Its zygote loads the CDM before sandboxing and requires
+//! `WidevineCdm/latest-component-updated-widevine-cdm` with an absolute Path.
 
 use std::path::{Path, PathBuf};
 
@@ -135,6 +139,14 @@ fn chrome_candidates() -> Vec<PathBuf> {
 /// whatever it finds. Matching versions is what the BUILD-time script does
 /// because it is compiling against one; at runtime we take what is there.
 fn find_cdm(chrome: &Path) -> Option<PathBuf> {
+    // Linux's packaged Chrome has no version directory around WidevineCdm.
+    if cfg!(target_os = "linux") {
+        let direct = chrome.join("WidevineCdm/_platform_specific")
+            .join(platform_dir()).join(library_name());
+        if direct.is_file() {
+            return Some(direct);
+        }
+    }
     let versions = if cfg!(target_os = "macos") {
         chrome.join("Contents/Frameworks/Google Chrome Framework.framework/Versions")
     } else {
@@ -170,10 +182,14 @@ pub fn stage(dest_root: &Path) -> Result<Staged, StageError> {
 
 /// Copy the CDM into a profile, as `<user_data_dir>/WidevineCdm/<version>/`:
 /// the component updater's own layout, which it registers at startup. See the
-/// module notes for why macOS uses this instead of the core bundle.
-#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+/// module notes for why macOS and Linux use this instead of the core bundle.
+#[cfg_attr(not(any(target_os = "macos", target_os = "linux")), allow(dead_code))]
 pub fn stage_into_profile(user_data_dir: &Path) -> Result<Staged, StageError> {
     let (chrome, from) = chrome_cdm()?;
+    stage_profile_from(&chrome, from, user_data_dir)
+}
+
+fn stage_profile_from(chrome: &Path, from: PathBuf, user_data_dir: &Path) -> Result<Staged, StageError> {
     let version = from
         .parent()
         .and_then(Path::parent)
@@ -185,8 +201,30 @@ pub fn stage_into_profile(user_data_dir: &Path) -> Result<Staged, StageError> {
         // A version directory named by anything else would be skipped by the
         // component updater, so no manifest is the same as no CDM.
         .filter(|v| !v.is_empty() && v.chars().all(|c| c.is_ascii_digit() || c == '.'))
-        .ok_or_else(|| StageError::NoCdm(chrome.clone()))?;
-    stage_from(&chrome, from, &user_data_dir.join("WidevineCdm").join(version))
+        .ok_or_else(|| StageError::NoCdm(chrome.to_path_buf()))?;
+    let dest = user_data_dir.join("WidevineCdm").join(version);
+    let staged = stage_from(chrome, from, &dest)?;
+    #[cfg(target_os = "linux")]
+    {
+        use std::io::Write;
+        use std::os::unix::fs::OpenOptionsExt;
+        // Atomic publication: a partial JSON hint must not prevent the next
+        // zygote from finding a complete, already-staged CDM directory.
+        let parent = dest.parent().unwrap();
+        let temporary = parent.join(format!(".hint-{}", uuid::Uuid::now_v7()));
+        let publish = || -> Result<(), std::io::Error> {
+            let mut file = std::fs::OpenOptions::new().write(true).create_new(true)
+                .mode(0o600).open(&temporary)?;
+            let hint = serde_json::json!({"Path": std::fs::canonicalize(&dest)?});
+            file.write_all(hint.to_string().as_bytes())?;
+            file.sync_all()?;
+            std::fs::rename(&temporary, parent.join("latest-component-updated-widevine-cdm"))
+        };
+        let result = publish();
+        let _ = std::fs::remove_file(temporary);
+        result?;
+    }
+    Ok(staged)
 }
 
 /// The installed Chrome and the CDM library inside it.
@@ -213,11 +251,9 @@ fn stage_from(chrome: &Path, from: PathBuf, dest_root: &Path) -> Result<Staged, 
 
     let bytes = std::fs::metadata(&from)?.len();
     let already = std::fs::metadata(&to).map(|m| m.len()).unwrap_or(0);
-    if already == bytes {
-        return Ok(Staged { from, to, bytes });
+    if already != bytes {
+        std::fs::copy(&from, &to)?;
     }
-
-    std::fs::copy(&from, &to)?;
 
     // The signature file and the manifest travel with it. Chromium checks the
     // manifest for the CDM's interface version, and a library without one is a
@@ -257,11 +293,10 @@ fn stage_from(chrome: &Path, from: PathBuf, dest_root: &Path) -> Result<Staged, 
 }
 
 /// Where the CDM belongs beside a given core binary: the core's own
-/// directory on Windows and Linux. None on macOS, where writing into the
-/// signed bundle is what made Gatekeeper call it damaged; profiles get it
-/// from `stage_into_profile` there.
+/// directory on Windows. macOS and Linux stage into the profile instead of
+/// writing into a signed bundle or a root-owned package directory.
 pub fn destination_for(core: &Path) -> Option<PathBuf> {
-    if cfg!(target_os = "macos") {
+    if cfg!(any(target_os = "macos", target_os = "linux")) {
         return None;
     }
     bundle_destination_for(core)
@@ -296,6 +331,33 @@ fn bundle_destination_for(core: &Path) -> Option<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn linux_flat_cdm_is_staged_with_a_zygote_hint_and_recovers_a_missing_manifest() {
+        let tmp = crate::tmp::TempDir::new("wv-linux");
+        let chrome = tmp.join("chrome");
+        let cdm = chrome.join("WidevineCdm");
+        let lib = cdm.join("_platform_specific").join(platform_dir()).join(library_name());
+        std::fs::create_dir_all(lib.parent().unwrap()).unwrap();
+        std::fs::write(&lib, b"fixture-only").unwrap();
+        std::fs::write(cdm.join("manifest.json"), r#"{"version":"4.10.2934.0"}"#).unwrap();
+        let from = find_cdm(&chrome).expect("Linux's direct CDM layout must be found");
+        assert_eq!(from, lib);
+        let profile = tmp.join("profile");
+        let first = stage_profile_from(&chrome, from.clone(), &profile).unwrap();
+        let root = profile.join("WidevineCdm/4.10.2934.0");
+        let hint_path = profile.join("WidevineCdm/latest-component-updated-widevine-cdm");
+        let hint: serde_json::Value = serde_json::from_slice(&std::fs::read(hint_path).unwrap()).unwrap();
+        assert_eq!(hint["Path"], std::fs::canonicalize(&root).unwrap().to_str().unwrap());
+        assert!(root.join("manifest.json").is_file());
+        // A previous interrupted copy must heal even when the library size matches.
+        std::fs::remove_file(root.join("manifest.json")).unwrap();
+        let repeated = stage_profile_from(&chrome, from, &profile).unwrap();
+        assert_eq!(first.to, repeated.to);
+        assert!(root.join("manifest.json").is_file());
+        assert_eq!(destination_for(Path::new("/usr/lib/fury-core/chrome")), None);
+    }
 
     #[test]
     fn the_platform_directory_is_the_one_chromium_looks_in() {
@@ -367,6 +429,7 @@ mod tests {
                 let dirs: Vec<_> = std::fs::read_dir(tmp.join("WidevineCdm"))
                     .unwrap()
                     .flatten()
+                    .filter(|e| e.path().is_dir())
                     .map(|e| e.file_name().to_string_lossy().to_string())
                     .collect();
                 assert_eq!(dirs.len(), 1, "{dirs:?}");

@@ -10,7 +10,7 @@
 // `__absent: TypeError` in every capture before this.
 
     self.onmessage = async function (ev) {
-      const reply = (d) => (ev.ports && ev.ports[0] ? ev.ports[0].postMessage(d) : reply(d));
+      const reply = (d) => (ev.ports && ev.ports[0] ? ev.ports[0].postMessage(d) : self.postMessage(d));
       function hash(str) {
         let h = 0x811c9dc5;
         for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
@@ -45,7 +45,8 @@
         ctx.fillStyle = '#f60';
         ctx.fillRect(125, 1, 62, 20);
         ctx.fillStyle = '#069';
-        ctx.fillText('Fury <canvas> 1.0 \\u00e9\\u00e8\\u00ea \\ud83d\\ude03', 2, 15);
+        // Compare the same installed Latin font, not per-realm emoji fallback.
+        ctx.fillText('Fury <canvas> 1.0 ASCII control', 2, 15);
         const d = ctx.getImageData(0, 0, 280, 60).data;
         return hash(Array.from(d).join(','));
       });

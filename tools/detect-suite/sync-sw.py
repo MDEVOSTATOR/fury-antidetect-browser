@@ -36,11 +36,12 @@ def render():
         print("!! WORKER_PROBE_SRC not found in probe.js", file=sys.stderr)
         sys.exit(2)
     body = m.group(1)
+    body = body.replace("self.postMessage(", "reply(")
     body = body.replace(
         "self.onmessage = async function () {",
         "self.onmessage = async function (ev) {\n"
         "      const reply = (d) => (ev.ports && ev.ports[0] ? ev.ports[0].postMessage(d) : self.postMessage(d));",
-    ).replace("self.postMessage(", "reply(")
+    )
     return HEADER + body + "\n"
 
 

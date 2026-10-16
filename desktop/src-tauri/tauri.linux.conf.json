@@ -1,0 +1,13 @@
+{
+  "bundle": {
+    "targets": ["deb"],
+    "licenseFile": "../../LICENSE",
+    "linux": {
+      "deb": {
+        "depends": ["fury-core", "libwebkit2gtk-4.1-0", "libgtk-3-0t64", "libsecret-1-0"],
+        "recommends": ["gnome-keyring"],
+        "files": {"/usr/share/doc/fury/copyright": "../../LICENSE"}
+      }
+    }
+  }
+}

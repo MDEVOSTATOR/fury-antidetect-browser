@@ -3,6 +3,11 @@
   <img src="assets/logo.png" alt="Fury" width="420">
 </picture>
 
+**Linux fork:** this checkout adds an Ubuntu 24.04 x86_64 port based on Fury 0.4.5.
+The native desktop `.deb` and agent have been built and the GUI opened on Linux.
+The patched Chromium core is being built separately; browser/fingerprint validation
+is still required. See [Linux build and validation](docs/20-linux-port.md).
+
 A free, open-source anti-detect browser with real team collaboration. Own
 Chromium fork, works standalone with no server, self-hostable when you need a
 team. No seats, no per-profile pricing, no telemetry.
@@ -56,7 +61,7 @@ team. No seats, no per-profile pricing, no telemetry.
 > com.apple.quarantine /Applications/Fury.app` once; [docs/15](docs/15-install.md)
 > walks through both.
 >
-> **Linux** is not a target. See the table at the bottom.
+> **Linux:** upstream does not ship it; this fork's status is tracked in [docs/20](docs/20-linux-port.md).
 >
 > Everything that is *not* done is listed at the bottom, honestly.
 
@@ -309,7 +314,7 @@ row says why the alternative is worse.
 
 | | |
 |---|---|
-| Linux | not a target, and this is a decision rather than a gap. The Rust still compiles there so CI and contributors can run the suite; there is no Linux release, no Linux core config and no plan for one. Shipping a third platform nobody tests would be a claim, not a port |
+| Linux | Experimental Ubuntu 24.04 x86_64 port in this fork; see [docs/20](docs/20-linux-port.md) for actual build and validation results. |
 | WebRTC through the proxy | no. The relay is TCP; patch 0070 puts the browser in the state a real Chrome reaches under the enterprise `WebRTCIPHandlingPolicy` — no ICE candidates at all — rather than let a peer connection go around the proxy and hand the page the real address |
 | Hiding CDP from a timing check | no, and now known to be unclosable rather than merely undone. Split into its two parts ([cdp-timing.py](tools/detect-suite/cdp-timing.py)): attaching costs nothing, `Runtime.enable` costs a fixed 2.7x plus more as the logged object grows. A patch can remove the size half — preview generation — and not the fixed half, which is the message reaching the frontend at all. Real Chrome measures the same. The control that works is `cdp: false`, which is the default |
 | Updates | one button, never on its own. Since 0.2.18 the application asks GitHub for a new release at start and every six hours and shows a bar; Settings → About turns the check off. From 0.3.0 the bar's **Update** downloads the new version, checks its signature against the project's key, installs it and restarts; it refuses while profiles are open, and a file without that signature is never installed. The request goes from this machine's address, not a profile's proxy. How it is kept safe: [docs/15](docs/15-install.md) |

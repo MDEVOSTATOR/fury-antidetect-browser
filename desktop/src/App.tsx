@@ -47,6 +47,7 @@ function coreWhat(need: string): Key {
 }
 
 export function App() {
+  const linuxDesktop = navigator.platform.startsWith("Linux");
   // The shell answers what the interface cannot know on its own: whether this
   // installation works alone or against a server, what this machine is called,
   // and whether there is a live session. In local mode there is no session and
@@ -908,7 +909,7 @@ export function App() {
                   : (dl?.error ??
                     (shell.core_outdated ? t("app.coreOutdatedHow") : null) ??
                     shell.core_problem ??
-                    t("app.noCoreHow"))}
+                    t(linuxDesktop ? "app.noCoreLinux" : "app.noCoreHow"))}
               </div>
               {dl?.running && dl.total > 0 && (
                 <progress
@@ -918,7 +919,7 @@ export function App() {
                 />
               )}
             </div>
-            <button
+            {!linuxDesktop && <button
               disabled={dl?.running || coreBusy}
               onClick={async () => {
                 setCoreBusy(true);
@@ -937,7 +938,7 @@ export function App() {
               }}
             >
               {dl?.running ? t("app.coreDownloadingShort") : t("app.coreDownload")}
-            </button>
+            </button>}
           </div>
         )}
 
@@ -1068,7 +1069,7 @@ export function App() {
                         total: Math.round(dl.total / 1e6).toString(),
                       })
                     : t("app.coreStarting")
-                  : (dl?.error ?? t("app.coreStaleHow", { what: t(coreWhat(shell.core_stale.need)) }))}
+                  : (dl?.error ?? (linuxDesktop ? t("app.noCoreLinux") : t("app.coreStaleHow", { what: t(coreWhat(shell.core_stale.need)) })))}
               </div>
               {dl?.running && dl.total > 0 && (
                 <progress
@@ -1078,7 +1079,7 @@ export function App() {
                 />
               )}
             </div>
-            <button
+            {!linuxDesktop && <button
               disabled={dl?.running || coreBusy}
               onClick={async () => {
                 setCoreBusy(true);
@@ -1092,7 +1093,7 @@ export function App() {
               }}
             >
               {dl?.running ? t("app.coreDownloadingShort") : t("app.coreUpdate")}
-            </button>
+            </button>}
           </div>
         )}
 

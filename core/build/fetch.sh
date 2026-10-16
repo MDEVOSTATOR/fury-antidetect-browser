@@ -112,7 +112,11 @@ fi
 
 # --- checkout the tag -------------------------------------------------------
 echo "==> Fetching tag $CHROMIUM_VERSION"
-git -C "$SRC" fetch --depth 1 origin "refs/tags/$CHROMIUM_VERSION"
+if git -C "$SRC" rev-parse --verify "refs/tags/$CHROMIUM_VERSION^{commit}" >/dev/null 2>&1; then
+  echo "==> Reusing the downloaded, pinned source tag"
+else
+  git -C "$SRC" fetch --depth 1 origin "refs/tags/$CHROMIUM_VERSION:refs/tags/$CHROMIUM_VERSION"
+fi
 
 # A tree with the patch series on it cannot be checked out over, and silently
 # discarding somebody's edits is not this script's call to make. The series is
@@ -154,7 +158,7 @@ fi
 # sync below puts them back. A blocker anywhere else stops this, because it
 # would mean something other than a dependency has moved.
 for attempt in 1 2 3 4 5 6 7 8 9 10; do
-  if err=$(git -C "$SRC" checkout -f -q --detach FETCH_HEAD 2>&1); then
+  if err=$(git -C "$SRC" checkout -f -q --detach "refs/tags/$CHROMIUM_VERSION" 2>&1); then
     break
   fi
   blockers=$(printf '%s\n' "$err" | sed -n 's/^\t\(third_party\/[^/]*\/[^/]*\).*/\1/p' | sort -u)
@@ -180,9 +184,13 @@ echo "==> gclient sync (this is the slow part)"
 # Measured 10.09.2026 on the macOS 153 sync, fourteen minutes in. gclient sync
 # is resumable -- what it already has it keeps -- so the answer is to wait and
 # ask again rather than to start over. Backs off 60s, 120s, 240s, 480s.
+PINNED_REVISION="$(git -C "$SRC" rev-parse "refs/tags/$CHROMIUM_VERSION^{commit}")"
 sync_attempt=1
 delay=60
-until (cd "$CORE_DIR" && "$GCLIENT" sync --with_branch_heads --with_tags -D --no-history); do
+# Pin src explicitly. Even an unmanaged solution asks for the default remote
+# HEAD before skipping its update, which needlessly stalls a resumed checkout.
+# Branch heads and unrelated tags are not needed to build one pinned commit.
+until (cd "$CORE_DIR" && "$GCLIENT" sync --jobs="${FURY_SYNC_JOBS:-4}" --revision "src@$PINNED_REVISION" -D --no-history); do
   if [ "$sync_attempt" -ge 5 ]; then
     echo "!! gclient sync failed 5 times. The last error is above; if it is a 429" >&2
     echo "!! the limit is per-hour and waiting longer is the fix, not a flag." >&2

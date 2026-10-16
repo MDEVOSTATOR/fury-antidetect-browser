@@ -94,7 +94,7 @@ const TOOLS: &[Tool] = &[
         description: "The machines a profile can be: id, OS, GPU, screen, and how common each is among real users. \
                       Prefer common ones; the OS should usually match the person's own computer.",
         schema: || json!({ "type": "object", "properties": {
-            "os": { "type": "string", "description": "Only this OS: windows, macos" },
+            "os": { "type": "string", "description": "Only this OS: windows, macos, linux" },
         }}),
     },
     Tool {
@@ -109,7 +109,7 @@ const TOOLS: &[Tool] = &[
             "proxy": { "type": "string", "description": "A saved proxy's id or name (fury_list_proxies)" },
             "proxy_line": { "type": "string", "description": "Or a proxy as a line, e.g. socks5://user:pass@host:port; it is saved first" },
             "persona": { "type": "string", "description": "Persona id from fury_list_personas" },
-            "os": { "type": "string", "description": "Or just the OS: windows, macos" },
+            "os": { "type": "string", "description": "Or just the OS: windows, macos, linux" },
             "start_urls": { "type": "array", "items": { "type": "string" } },
             "stage": { "type": "string", "description": "The account's stage, e.g. warming" },
         }, "required": ["name"] }),

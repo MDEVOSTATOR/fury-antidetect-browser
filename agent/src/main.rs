@@ -638,6 +638,15 @@ pub fn core_binary() -> Option<std::path::PathBuf> {
         }
     }
 
+    // Linux packages keep the core and its setuid sandbox in a root-owned tree.
+    #[cfg(target_os = "linux")]
+    {
+        let packaged = std::path::PathBuf::from("/usr/lib/fury-core/chrome");
+        if packaged.is_file() {
+            return Some(packaged);
+        }
+    }
+
     // Then the installed location. This is the ordinary case for anybody who
     // did not build the browser: the shell is 12 MB and downloads with the
     // application, the core is 134 MB and arrives separately.
@@ -793,7 +802,7 @@ fn core_leaves() -> &'static [&'static str] {
     }
     #[cfg(all(unix, not(target_os = "macos")))]
     {
-        &["fury-core", "chrome"]
+        &["Fury/chrome", "fury-core", "chrome"]
     }
 }
 

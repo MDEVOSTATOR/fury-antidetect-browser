@@ -126,6 +126,8 @@ pub fn from_capture(dump: &Value, id: &str, weight: f64) -> Result<Value, String
             "Windows".into()
         } else if ua.contains("Android") {
             "Android".into()
+        } else if platform.starts_with("Linux") {
+            "Linux".into()
         } else {
             "macOS".into()
         }
@@ -145,6 +147,7 @@ pub fn from_capture(dump: &Value, id: &str, weight: f64) -> Result<Value, String
     // message names the capture rather than the file it produced.
     let mac = ch_platform == "macOS";
     let android = ch_platform == "Android";
+    let linux = ch_platform == "Linux";
     if android && (renderer.contains("Direct3D") || renderer.contains("Metal")) {
         return Err(format!("capture claims Android with a desktop renderer: {renderer}"));
     }
@@ -153,6 +156,9 @@ pub fn from_capture(dump: &Value, id: &str, weight: f64) -> Result<Value, String
     }
     if !mac && renderer.contains("Metal") {
         return Err(format!("capture claims {ch_platform} with a Metal renderer: {renderer}"));
+    }
+    if linux && (renderer.contains("Direct3D") || renderer.contains("D3D11")) {
+        return Err(format!("capture claims Linux with a Direct3D renderer: {renderer}"));
     }
 
     let fonts: Vec<String> = dump
@@ -262,7 +268,7 @@ pub fn from_capture(dump: &Value, id: &str, weight: f64) -> Result<Value, String
     // Windows 10 machine (see PersonaOs::display_version).
     let platform_version = s(dump, "clientHints.platformVersion").unwrap_or_default();
     let os_version = match crate::persona::windows_release(&platform_version) {
-        Some(release) if !mac && !android => release.to_string(),
+        Some(release) if ch_platform == "Windows" => release.to_string(),
         _ => platform_version,
     };
 
@@ -272,7 +278,7 @@ pub fn from_capture(dump: &Value, id: &str, weight: f64) -> Result<Value, String
         // NOT "measured". See the module comment.
         "source": "capture",
         "os": {
-            "name": if mac { "macOS" } else if android { "Android" } else { "Windows" },
+            "name": if mac { "macOS" } else if android { "Android" } else if linux { "Linux" } else { "Windows" },
             "version": os_version,
             "arch": if android { "arm64".to_string() } else { s(dump, "clientHints.architecture").unwrap_or_else(|| "x86".into()) },
             "user_agent_template": ua_template(&ua),
@@ -324,6 +330,53 @@ pub fn from_capture(dump: &Value, id: &str, weight: f64) -> Result<Value, String
         persona["mobile"] = m;
     }
     Ok(persona)
+}
+
+#[cfg(test)]
+mod linux_tests {
+    use super::*;
+
+    fn linux_capture() -> Value {
+        let mut dump: Value = serde_json::from_str(include_str!(
+            "../../tools/detect-suite/baselines/chrome-153-windows-x64-redacted.json"
+        )).unwrap();
+        dump["navigator"]["userAgent"] = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36".into();
+        dump["navigator"]["platform"] = "Linux x86_64".into();
+        dump["clientHints"]["platform"] = "Linux".into();
+        dump["clientHints"]["platformVersion"] = "".into();
+        for version in ["webgl1", "webgl2"] {
+            dump["webgl"][version]["unmasked"]["renderer"] =
+                "ANGLE (Intel, Intel UHD Graphics, OpenGL 4.5)".into();
+        }
+        dump
+    }
+
+    #[test]
+    fn linux_capture_preserves_its_os_and_passes_validation() {
+        let result = from_capture(&linux_capture(), "linux-test", 0.02).unwrap();
+        let persona: crate::persona::Persona = serde_json::from_value(result).unwrap();
+        assert_eq!(persona.os.name, "Linux");
+        assert_eq!(persona.os.platform, "Linux x86_64");
+        assert_eq!(persona.os.ch_platform, "Linux");
+        persona.validate().unwrap();
+        let mut wrong = persona.clone();
+        wrong.os.platform = "Win32".into();
+        assert!(wrong.validate().is_err());
+    }
+
+    #[test]
+    fn linux_without_client_hints_is_not_misclassified_as_macos() {
+        let mut dump = linux_capture();
+        dump["clientHints"].as_object_mut().unwrap().remove("platform");
+        assert_eq!(from_capture(&dump, "linux-test", 0.02).unwrap()["os"]["name"], "Linux");
+    }
+
+    #[test]
+    fn linux_capture_refuses_a_windows_gpu_driver() {
+        let mut dump = linux_capture();
+        dump["webgl"]["webgl2"]["unmasked"]["renderer"] = "ANGLE (NVIDIA, Direct3D11)".into();
+        assert!(from_capture(&dump, "linux-test", 0.02).unwrap_err().contains("Direct3D"));
+    }
 }
 
 #[cfg(test)]

@@ -34,16 +34,10 @@ jobs:
   #     error: failed to run custom build command for `gobject-sys v0.18.0`
   #     The system library `gobject-2.0` was not found.
   #
-  # fury-desktop is Tauri, and on Linux Tauri is GTK and WebKitGTK. On macOS it
-  # is WKWebView and on Windows it is WebView2, so that dependency exists on
-  # exactly the platform this project does not ship. Installing a GTK stack on
-  # the runner would have made the red tick go away and would have tested the
-  # shell against a toolkit it will never run on.
+  # fury-desktop is Tauri: GTK/WebKitGTK on Linux, WKWebView on macOS and
+  # WebView2 on Windows. The Linux shell job below installs its native stack.
   #
-  # So: the shell is tested where it ships, and everything else is tested on
-  # Linux — which also keeps honest the claim in platform-rs/src/dirs.rs that
-  # the Rust still compiles there for contributors, since an untested claim is
-  # the thing this repository is supposed to be against.
+  # Keep the fast core Rust tests independent of the GUI dependency stack.
 
   rust:
     name: cargo test (everything but the shell)
@@ -88,6 +82,29 @@ jobs:
       # The whole workspace, so this is also the job that proves the agent and
       # the server build on the platform that is actually released.
       - run: cargo test --workspace --all-targets
+
+  linux-shell:
+    name: Linux desktop tests and Debian package
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: Swatinem/rust-cache@v2
+      - name: Linux desktop dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libxdo-dev libssl-dev \
+            libayatana-appindicator3-dev librsvg2-dev libsecret-1-dev
+      - run: tools/linux/build-shell.sh
+      - run: cargo test -p fury-desktop --all-targets
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fury-linux-desktop
+          path: dist-linux/*.deb
 
   windows-surface:
     name: the Windows code compiles
@@ -267,6 +284,7 @@ jobs:
       # harness rather than to the browser — the one false positive the headline
       # number cannot afford.
       - run: python3 tools/detect-suite/sync-sw.py --check
+      - run: node tools/detect-suite/test-sw.mjs
       # The status page is generated from those same captures. Regenerating it
       # here keeps a published page from claiming numbers the repository no
       # longer contains — the one way a status page is worse than none.

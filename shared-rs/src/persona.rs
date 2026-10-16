@@ -672,9 +672,14 @@ impl Persona {
         let mut errs = Vec::new();
         let is_mac = self.os.name == "macOS";
         let is_win = self.os.name == "Windows";
+        let is_linux = self.os.name == "Linux";
         let is_android = self.is_android();
 
-        if !is_mac && !is_win && !is_android {
+        if is_linux && (self.os.ch_platform != "Linux" || !self.os.user_agent_template.contains("Linux")) {
+            errs.push("Linux persona must report Linux in Client Hints and User-Agent".into());
+        }
+
+        if !is_mac && !is_win && !is_android && !is_linux {
             errs.push(format!("unknown os.name {:?}", self.os.name));
         }
 
@@ -686,7 +691,7 @@ impl Persona {
                 ));
             }
         } else {
-            let expected_platform = if is_mac { "MacIntel" } else { "Win32" };
+            let expected_platform = if is_mac { "MacIntel" } else if is_linux { "Linux x86_64" } else { "Win32" };
             if self.os.platform != expected_platform {
                 errs.push(format!(
                     "os.platform {:?} does not match os.name {:?} (expected {expected_platform:?})",
@@ -708,6 +713,9 @@ impl Persona {
         }
 
         let r = &self.gpu.webgl_renderer;
+        if is_linux && (r.contains("Direct3D") || r.contains("D3D11") || r.contains("Metal")) {
+            errs.push(format!("Linux persona with a foreign driver stack: {r}"));
+        }
         if is_mac && (r.contains("Direct3D") || r.contains("D3D11")) {
             errs.push(format!("macOS persona with a Direct3D renderer: {r}"));
         }
@@ -767,6 +775,11 @@ impl Persona {
         if is_android {
             if !(1.0..=4.5).contains(&dpr) {
                 errs.push(format!("devicePixelRatio {dpr} is outside what Android panels report (1 to 4.5)"));
+            }
+        } else if is_linux {
+            // Linux compositors expose fractional scaling independently of Windows.
+            if !(0.5..=4.5).contains(&dpr) {
+                errs.push(format!("devicePixelRatio {dpr} is outside the Linux scaling range"));
             }
         } else if !allowed.iter().any(|a| (a - dpr).abs() < 1e-9) {
             errs.push(format!(

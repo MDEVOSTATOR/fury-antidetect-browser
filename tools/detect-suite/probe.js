@@ -1139,7 +1139,8 @@
         ctx.fillStyle = '#f60';
         ctx.fillRect(125, 1, 62, 20);
         ctx.fillStyle = '#069';
-        ctx.fillText('Fury <canvas> 1.0 \\u00e9\\u00e8\\u00ea \\ud83d\\ude03', 2, 15);
+        // Compare the same installed Latin font, not per-realm emoji fallback.
+        ctx.fillText('Fury <canvas> 1.0 ASCII control', 2, 15);
         const d = ctx.getImageData(0, 0, 280, 60).data;
         return hash(Array.from(d).join(','));
       });
@@ -1210,7 +1211,7 @@
         ctx.fillStyle = '#f60';
         ctx.fillRect(125, 1, 62, 20);
         ctx.fillStyle = '#069';
-    ctx.fillText('Fury <canvas> 1.0 éèê 😃', 2, 15);
+        ctx.fillText('Fury <canvas> 1.0 ASCII control', 2, 15);
         return hash(Array.from(ctx.getImageData(0, 0, 280, 60).data).join(','));
       }),
       webglUnmasked: safeIn(() => {
@@ -1514,21 +1515,15 @@
    * reported separately as informational. */
   /* Fields that real Chrome itself answers differently in a given context.
    *
-   * Measured 02.08.2026 on Chrome 150.0.7871.187, unmodified: canvasHash in a
-   * ServiceWorker is 94dc364c while every other context — main frame, dedicated
-   * Worker, SharedWorker and all three iframes — reports 662a7e6d. A
-   * ServiceWorker has no document and therefore not the same fonts, so the same
-   * OffscreenCanvas text renders differently. Nothing is spoofing anything;
-   * that is simply what the browser does.
-   *
-   * Excluded rather than tolerated, because a metric with a known false
-   * positive is a metric people learn to ignore, and this one is the headline.
-   * The raw value stays in the capture, so anybody can look.
-   *
-   * The bar for adding a line here is a measurement on stock Chrome, quoted.
+   * The old ServiceWorker canvas exception is removed in probe 0.3.1.
+   * Its generated source had uncooked Unicode escapes, and Linux SharedWorker
+   * emoji fallback differs from the document's even with correct source.
+   * The control now uses identical ASCII/Arial in every realm; the full Canvas
+   * fingerprint above still includes Unicode and emoji. Measured on stock
+   * Chrome 155.0.8059.39, Linux x64: all eight canvas contexts report b98b304e.
+   * No canvas context is excluded from consistency checking anymore.
    */
   const KNOWN_CONTEXT_DIFFERENCES = {
-    serviceWorker: ['canvasHash'],
   };
 
   function compareContexts(contexts) {
@@ -1635,7 +1630,7 @@
 
     return {
       __schema: SCHEMA,
-      __probeVersion: '0.3.0',
+      __probeVersion: '0.3.1',
       __collectedInMs: Date.now() - started,
 
       navigator: collectNavigator(),

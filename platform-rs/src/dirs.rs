@@ -45,10 +45,7 @@ pub fn data_dir() -> PathBuf {
         PathBuf::from(home).join("Library/Application Support/Fury")
     }
 
-    // Not a shipped target — see lib.rs — but the Unix path compiles here so
-    // that CI and anyone working on this from a Linux machine can run the test
-    // suite. Refusing to compile would be a different decision from refusing to
-    // release, and only the second one was made.
+    // Linux follows XDG; the shell and agent must resolve the same directory.
     #[cfg(all(unix, not(target_os = "macos")))]
     {
         let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());

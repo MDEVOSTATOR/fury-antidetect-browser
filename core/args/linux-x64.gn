@@ -1,0 +1,32 @@
+# Linux x86_64 release core. Keep Chromium's namespace/seccomp sandbox enabled.
+target_os = "linux"
+target_cpu = "x64"
+is_official_build = true
+is_debug = false
+symbol_level = 0
+blink_symbol_level = 0
+dcheck_always_on = false
+proprietary_codecs = true
+ffmpeg_branding = "Chrome"
+is_chrome_branded = false
+use_official_google_api_keys = false
+google_api_key = ""
+google_default_client_id = ""
+google_default_client_secret = ""
+enable_reporting = false
+enable_remoting = false
+enable_hangout_services_extension = false
+enable_widevine = true
+bundle_widevine_cdm = false
+enable_print_preview = true
+use_lld = true
+chrome_pgo_phase = 2
+disable_fieldtrial_testing_config = true
+use_siso = false
+# Linux official builds enable CFI, which requires ThinLTO. Keep that protection.
+use_thin_lto = true
+use_sysroot = true
+use_ozone = true
+ozone_auto_platforms = false
+ozone_platform_x11 = true
+ozone_platform_wayland = true

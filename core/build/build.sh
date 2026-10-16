@@ -5,7 +5,7 @@
 # Build the patched Chromium.
 #
 # Usage: core/build/build.sh <target>
-#   targets: macos-arm64 | macos-x64 | windows-x64
+#   targets: macos-arm64 | macos-x64 | windows-x64 | linux-x64
 #
 # Full build: 1.5-3 h on 32+ cores, 4-8 h on a laptop. Incremental after one
 # patch: 5-30 min. Do not delete out/ between runs — that is your ccache.
@@ -13,7 +13,7 @@ set -euo pipefail
 
 CORE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC="$CORE_DIR/src"
-TARGET="${1:?usage: build.sh <macos-arm64|macos-x64|windows-x64>}"
+TARGET="${1:?usage: build.sh <macos-arm64|macos-x64|windows-x64|linux-x64>}"
 # `.noindex` is not decoration: it is the only thing measured to work.
 #
 # ninja writes the five helper applications as standalone bundles beside
@@ -63,6 +63,13 @@ case "$TARGET" in
       echo "!! macOS targets require a physical Mac. There is no cross-compile." >&2
       exit 1
     }
+    ;;
+  linux-x64*)
+    [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] || {
+      echo "!! Linux x64 targets require an x86_64 Linux build host." >&2
+      exit 1
+    }
+    python3 "$CORE_DIR/build/link-icons-linux.py"
     ;;
   windows-x64*)
     case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) ;; *)
@@ -270,7 +277,9 @@ PROGRESS="$SRC/$OUT/build-progress.log"
 # failure in it -- unanchored, because ninja redraws its progress line with a
 # carriage return there and "FAILED:" lands mid-line.
 set +e
-(cd "$SRC" && autoninja -C "$OUT" $JOBS_ARG chrome 2>&1 | tee "$PROGRESS")
+build_targets=(chrome)
+case "$TARGET" in linux-*) build_targets+=(chrome_sandbox) ;; esac
+(cd "$SRC" && autoninja -C "$OUT" $JOBS_ARG "${build_targets[@]}" 2>&1 | tee "$PROGRESS")
 status=$?
 set -e
 if [ "$status" -ne 0 ] || grep -qE 'FAILED: |ninja: build stopped' "$PROGRESS"; then

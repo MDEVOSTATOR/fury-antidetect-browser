@@ -35,10 +35,8 @@
 //! Windows Credential Manager, so there is nothing to write and nothing to
 //! check — see `agent/src/vault.rs`.
 //!
-//! Linux is not a target. Nothing in this crate is macOS-specific — the Unix
-//! side is plain POSIX and would work — but the project builds for macOS and
-//! Windows and says so, and a third platform nobody tests is a claim rather
-//! than a port.
+//! Linux uses the POSIX implementation. The Ubuntu x86_64 port also exercises
+//! IPC and carrier inheritance natively; see docs/20-linux-port.md.
 
 pub mod carrier;
 pub mod dirs;

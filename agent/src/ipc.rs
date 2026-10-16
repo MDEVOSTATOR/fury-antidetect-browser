@@ -338,10 +338,9 @@ impl Agent {
         // about 19 MB, it is idempotent, and doing it while a user waits for a
         // profile to open would be felt.
         //
-        // Not on macOS: there each profile gets it in its own directory at
-        // launch (launcher::spawn), because writing into the signed core is
-        // what made Gatekeeper call it damaged (widevine.rs).
-        if let Some(core) = crate::core_binary().filter(|_| !cfg!(target_os = "macos")) {
+        // macOS/Linux stage per profile at launch: their cores are signed or
+        // root-owned, so writing beside the executable is not appropriate.
+        if let Some(core) = crate::core_binary().filter(|_| !cfg!(any(target_os = "macos", target_os = "linux"))) {
             match crate::widevine::destination_for(&core) {
                 Some(dest) => match crate::widevine::stage(&dest) {
                     Ok(s) => tracing::info!(
