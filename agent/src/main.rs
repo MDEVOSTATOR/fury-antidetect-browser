@@ -597,6 +597,14 @@ fn core_version_problem(exe: &std::path::Path) -> Option<String> {
 }
 
 pub fn core_binary() -> Option<std::path::PathBuf> {
+    let packaged = cfg!(target_os = "linux")
+        .then(|| std::path::Path::new("/usr/lib/fury-core/chrome"));
+    find_core_binary(packaged)
+}
+
+// Keep the package location injectable so discovery tests never depend on
+// whether the developer has installed the system package.
+fn find_core_binary(packaged: Option<&std::path::Path>) -> Option<std::path::PathBuf> {
     if let Ok(explicit) = std::env::var("FURY_CORE") {
         let path = std::path::PathBuf::from(explicit);
         if path.exists() {
@@ -639,12 +647,8 @@ pub fn core_binary() -> Option<std::path::PathBuf> {
     }
 
     // Linux packages keep the core and its setuid sandbox in a root-owned tree.
-    #[cfg(target_os = "linux")]
-    {
-        let packaged = std::path::PathBuf::from("/usr/lib/fury-core/chrome");
-        if packaged.is_file() {
-            return Some(packaged);
-        }
+    if let Some(packaged) = packaged.filter(|path| path.is_file()) {
+        return Some(packaged.to_path_buf());
     }
 
     // Then the installed location. This is the ordinary case for anybody who
@@ -878,7 +882,8 @@ pub fn parse_upstream(url: &str) -> anyhow::Result<Upstream> {
     let host = host.to_string();
 
     Ok(match scheme {
-        "http" | "https" => Upstream::Http { host, port, auth },
+        "http" => Upstream::Http { host, port, auth },
+        "https" => Upstream::Https { host, port, auth },
         // socks5 is treated as socks5h unconditionally: local DNS resolution
         // would leak the operator's resolver. See docs/05.
         "socks5" | "socks5h" => Upstream::Socks5 { host, port, auth },
@@ -936,14 +941,14 @@ mod tests {
             std::env::remove_var("FURY_CORE");
         }
 
-        assert_eq!(super::core_binary(), None, "nothing is installed yet");
+        assert_eq!(super::find_core_binary(None), None, "nothing is installed yet");
 
         let dir = crate::paths::core_dir();
         let leaf = dir.join(super::core_leaf());
         std::fs::create_dir_all(leaf.parent().unwrap()).unwrap();
         std::fs::write(&leaf, b"#!/bin/sh\n").unwrap();
 
-        assert_eq!(super::core_binary(), Some(leaf));
+        assert_eq!(super::find_core_binary(None), Some(leaf));
 
         unsafe { std::env::remove_var("FURY_HOME") };
         std::fs::remove_dir_all(&home).ok();
@@ -1057,6 +1062,18 @@ mod tests {
             parse_upstream("socks5://127.0.0.1:9050").unwrap(),
             Upstream::Socks5 { auth: None, .. }
         ));
+    }
+
+    #[test]
+    fn https_scheme_is_its_own_upstream() {
+        match parse_upstream("https://qa:disposable@proxy.example:8443").unwrap() {
+            Upstream::Https { host, port, auth } => {
+                assert_eq!(host, "proxy.example");
+                assert_eq!(port, 8443);
+                assert_eq!(auth.unwrap().password, "disposable");
+            }
+            other => panic!("https must use verified TLS, got {other:?}"),
+        }
     }
 
     #[test]

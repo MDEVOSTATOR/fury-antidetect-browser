@@ -23,7 +23,7 @@ Chromium нельзя просто отдать прокси клиента. П�
 ## Устройство релея
 
 ```
-Chromium ──HTTP/CONNECT──► relay (127.0.0.1:P) ──► upstream (HTTP или SOCKS5)
+Chromium ──HTTP/CONNECT──► relay (127.0.0.1:P) ──► upstream (HTTP, HTTPS или SOCKS5)
                               │
                               ├─ авторизация в upstream (Basic для HTTP, RFC 1929 для SOCKS5)
                               ├─ DNS: только удалённый резолв (ATYP=domain / CONNECT по имени)
@@ -42,7 +42,7 @@ Chromium ──HTTP/CONNECT──► relay (127.0.0.1:P) ──► upstream (HTT
 | Тип | Примечание |
 |---|---|
 | HTTP | Только Basic (`Proxy-Authorization: Basic`, `relay.rs:340-342`). Digest не реализован |
-| HTTPS | Схема принимается, но релей соединяется обычным TCP без TLS (`relay.rs:211-214`) — то есть работает как обычный HTTP-прокси. Настоящего HTTPS-прокси нет |
+| HTTPS | TLS к самому прокси с проверкой системной CA и hostname, затем CONNECT и Basic внутри TLS. При TLS-ошибке нет HTTP downgrade или direct fallback. [Linux-fork review](21-upstream-linux-review.md) |
 | SOCKS5 / SOCKS5h | username/password по RFC 1929. Всегда семантика `h`: адрес уходит апстриму как `ATYP=domain`, локального резолва нет ни в каком режиме и выключить это нельзя |
 | SSH-туннель | **Не реализован.** `parse_upstream` (`main.rs:358-363`) знает четыре схемы — http, https, socks5, socks5h — плюс `direct` без хоста, и на любую другую отвечает `unsupported proxy scheme` |
 | Без прокси (`direct`) | **Добавлено 22.09.2026.** Профиль выходит с адреса самой машины. По умолчанию запрещено и отказ остаётся отказом; разрешение — флаг `allow_no_proxy` на конкретном профиле, не общая настройка. Командному профилю недоступно: он открывается на машине коллеги, и «эта машина» была бы его. Релей при этом работает как обычно — на нём блок-листы, стартовая страница и отказ обращаться к службам этой машины, — просто апстрима нет и рукопожатия нет. Строка профиля в списке помечена |

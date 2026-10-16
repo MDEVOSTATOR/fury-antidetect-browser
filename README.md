@@ -27,7 +27,8 @@ agent and browser core have been built, installed and tested on Ubuntu 24.04 x86
 | Desktop and browser | Built and tested under X11/Xvfb |
 | Graphics validation | SwiftShader; WebGL 1 and 2 |
 | Extended browser tests | 29 passed; 4 unverified due to test-host prerequisites ([details](docs/20-linux-port.md#расширенный-прогон-16102026)) |
-| Hardware GPU, Wayland, other distributions | Not yet verified |
+| Native Wayland | Browser and installed desktop startup tested on isolated Weston/Pixman ([upstream review](docs/21-upstream-linux-review.md)) |
+| Hardware GPU, GNOME/KDE/Hyprland sessions, other distributions | Not yet verified |
 
 The default branch is **port/linux-x64**. This fork currently publishes source;
 Linux binary releases have not been uploaded. Follow the

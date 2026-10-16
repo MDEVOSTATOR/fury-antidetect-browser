@@ -21,6 +21,9 @@ const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 const quote = (s) => "'" + s.replaceAll("'", "'\\''") + "'";
 const wrapper = join(root, 'core');
 const requireWidevine = process.env.FURY_QA_REQUIRE_WIDEVINE === '1';
+const expectedOzone = process.env.FURY_QA_OZONE_PLATFORM;
+assert(!expectedOzone || ['x11', 'wayland'].includes(expectedOzone),
+  'FURY_QA_OZONE_PLATFORM must be x11 or wayland');
 const cookie = { name: 'fury_linux_qa', value: 'disposable-persistence-control' };
 const gpuArgs = process.env.FURY_QA_SOFTWARE_GPU === '1'
   ? ' --use-angle=swiftshader --enable-unsafe-swiftshader' : '';
@@ -114,6 +117,14 @@ async function capture(seed, label = String(seed)) {
     }, 'Sandbox status');
     await writeFile(join(out, `sandbox-${label}.txt`), sandbox);
     assert.match(sandbox, /Seccomp-BPF sandbox\s+Yes/, 'Seccomp sandbox is not active');
+    if (expectedOzone) {
+      await cdp.send('Page.navigate', { url: 'chrome://version' });
+      const commandLine = await retry(() => cdp.evaluate(
+        "document.querySelector('#command_line')?.textContent"), 'Browser command line');
+      assert(commandLine.split(/\s+/).includes(`--ozone-platform=${expectedOzone}`),
+        `Browser did not receive the expected ${expectedOzone} backend`);
+      await writeFile(join(out, `ozone-${label}.txt`), commandLine);
+    }
     await cdp.send('Page.navigate', { url: probe });
     await retry(() => cdp.evaluate("typeof furyProbe === 'function'"), 'Probe script');
     const first = await cdp.evaluate('furyProbe()');
@@ -156,6 +167,7 @@ try {
   const restarted = await capture(73, '73-restarted');
   assert.equal(first, restarted, 'Canvas changed after restarting the same profile');
   const result = { ok: true, softwareGpu: Boolean(gpuArgs), widevineRequired: requireWidevine,
+    ...(expectedOzone ? { ozonePlatform: expectedOzone } : {}),
     checks: ['sandboxed browser launch', 'Linux platform and Client Hints', 'native webdriver=false',
       'cross-context consistency', 'WebGL1/2 rendering', 'stable Canvas per profile and restart', 'different Canvas across seeds',
       'cookie persistence across browser restart', ...(requireWidevine ? ['locally staged Widevine'] : [])] };
