@@ -18,6 +18,7 @@ cp "$build_dir/chrome_sandbox" "$stage/Fury/chrome-sandbox"
 chmod 755 "$stage/Fury/chrome-sandbox"
 shopt -s nullglob
 for path in "$build_dir"/*.so* "$build_dir"/v8_context_snapshot.bin "$build_dir"/vk_swiftshader_icd.json; do
+  case "$path" in *.TOC) continue ;; esac
   [ ! -e "$path" ] || cp -a "$path" "$stage/Fury/"
 done
 shopt -u nullglob
@@ -69,5 +70,5 @@ EOF
 chmod 755 "$debroot/DEBIAN/postinst"
 find "$debroot" -type d -exec chmod 755 {} +
 debname="fury-core_${version}+linux1_amd64.deb"
-dpkg-deb --build --root-owner-group "$debroot" "$FURY_REPO/dist-linux/$debname"
+dpkg-deb --build --root-owner-group --threads-max=2 "$debroot" "$FURY_REPO/dist-linux/$debname"
 (cd "$FURY_REPO/dist-linux" && sha256sum "$debname" > "$debname.sha256")
