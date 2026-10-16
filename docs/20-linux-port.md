@@ -34,6 +34,11 @@ Linux `.deb` оболочки зависит от `fury-core`: устанавл�
 
 Ядро собирается из Chromium с полной последовательностью патчей Fury:
 
+В Linux-ветке 37 патчей: 36 upstream и `0002-linux-zygote-config.patch`.
+Linux создаёт sandboxed renderer/utility процессы через zygote/fork; они обходят
+обычный `Initialize()`. Дополнительный патч загружает уже переданный shared-memory
+fingerprint после fork, до thread pool и renderer initialization. Sandbox сохраняется.
+
 ```sh
 J=8 tools/linux/build-core.sh
 tools/linux/status.sh

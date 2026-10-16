@@ -1,0 +1,22 @@
+diff --git a/content/app/content_main_runner_impl.cc b/content/app/content_main_runner_impl.cc
+--- a/content/app/content_main_runner_impl.cc
++++ b/content/app/content_main_runner_impl.cc
+@@ -628,6 +628,18 @@
+ 
+   std::string process_type =
+       command_line->GetSwitchValueASCII(switches::kProcessType);
++
++  // Linux renderers and sandboxed utilities fork from a preinitialized zygote.
++  // They do not run ContentMainRunnerImpl::Initialize() again. ForkRequest has
++  // now installed this child's command line and GlobalDescriptors, so recover
++  // its read-only fingerprint region before any delegate or renderer sees it.
++  if (command_line->HasSwitch(fury::switches::kFingerprintHandle)) {
++    if (!fury::FuryConfig::InitializeInChild(command_line->GetSwitchValueASCII(
++            fury::switches::kFingerprintHandle))) {
++      LOG(FATAL) << "fury: zygote child could not map the fingerprint config";
++    }
++  }
++
+   CreateChildThreadPool(process_type);
+ 
+   // Re-randomize our stack canary, so processes don't share a single
