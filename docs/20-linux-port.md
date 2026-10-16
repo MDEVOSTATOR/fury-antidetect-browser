@@ -29,6 +29,8 @@ tools/linux/build-shell.sh
 Linux `.deb` оболочки зависит от `fury-core`: устанавливать нужно оба пакета
 из одного комплекта через `sudo apt install ./Fury_*.deb ./fury-core_*_amd64.deb`.
 `tools/linux/install.sh` проверяет локальные SHA-256 и устанавливает оба пакета.
+Зависимость закреплена на точную версию ядра. При обновлении версии workspace
+обновите её в `tauri.linux.conf.json`; `build-shell.sh` проверяет соответствие.
 
 Ядро собирается из Chromium с полной последовательностью патчей Fury:
 
