@@ -125,6 +125,10 @@ async function capture(seed, label = String(seed)) {
       assert.equal(dump.navigator.webdriver, false);
       assert.equal(dump.crossContext.consistent, true, JSON.stringify(dump.crossContext.disagreements));
       assert.equal(dump.canvas2d.stableAcrossCalls, true);
+      for (const name of ['webgl1', 'webgl2']) {
+        assert.equal(dump.webgl[name]?.render?.stableAcrossCalls, true,
+          `${name} must render successfully and remain stable`);
+      }
       if (requireWidevine) assert.equal(dump.drm['com.widevine.alpha'].available, true,
         'The locally installed Widevine CDM did not load');
     }
@@ -153,7 +157,7 @@ try {
   assert.equal(first, restarted, 'Canvas changed after restarting the same profile');
   const result = { ok: true, softwareGpu: Boolean(gpuArgs), widevineRequired: requireWidevine,
     checks: ['sandboxed browser launch', 'Linux platform and Client Hints', 'native webdriver=false',
-      'cross-context consistency', 'stable Canvas per profile and restart', 'different Canvas across seeds',
+      'cross-context consistency', 'WebGL1/2 rendering', 'stable Canvas per profile and restart', 'different Canvas across seeds',
       'cookie persistence across browser restart', ...(requireWidevine ? ['locally staged Widevine'] : [])] };
   await writeFile(join(out, 'SUMMARY.json'), JSON.stringify(result, null, 2));
   console.log(JSON.stringify(result));

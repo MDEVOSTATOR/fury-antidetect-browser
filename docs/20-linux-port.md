@@ -4,6 +4,20 @@
 для первой сборки: Ubuntu 24.04 x86_64, GTK 3 / WebKitGTK 4.1. Поддержку других
 дистрибутивов и Wayland нужно проверять отдельно.
 
+Приложение и ядро собраны и установлены. Запуск: меню приложений **Fury** либо
+`fury-desktop`. Установленные пакеты: `fury 0.4.5` и `fury-core 0.4.5+linux1`.
+Это первая Linux-сборка: проверена X11-сессия с программным GPU, аппаратный GPU
+и Wayland отдельно не проверялись.
+
+Комплект в `dist-linux/`:
+
+- `Fury_0.4.5_amd64.deb` — оболочка и агент;
+- `fury-core_0.4.5+linux1_amd64.deb` — Chromium с патчами и sandbox helper;
+- `.sha256` / `SHA256SUMS-shell` — контрольные суммы;
+- `fury-core-0.4.5-linux-x64.tar.xz` — архив runtime для разработчиков.
+
+Для Ubuntu рекомендуется установка двух `.deb` через `tools/linux/install.sh`.
+
 ## Сборка
 
 Rust можно установить локально в `.build/cargo` / `.build/rustup`, не меняя
@@ -90,8 +104,32 @@ dependency. Родительские `node_modules` не изменялись. �
 ## Проверено 16.10.2026
 
 - Release `fury-agent` / `fury-detect`, TypeScript/Vite frontend и Tauri `.deb`
-  собраны на Ubuntu 24.04 x86_64. Окно приложения отрисовано под Xvfb; snapshot
-  находится локально в `.build/qa/linux-desktop.png`.
+  собраны на Ubuntu 24.04 x86_64. Установленное приложение открыто под Xvfb,
+  обнаружило системное ядро и подключилось к агенту. Локальный snapshot:
+  `.build/qa/installed-desktop/desktop.png`.
+- Chromium **155.0.8059.39**, upstream commit
+  `3ff7ac5a9224be9156d7f8703a06e22890aafd34`, собран с 37 патчами,
+  official release / PGO phase 2 / ThinLTO / CFI. `chrome --version` возвращает
+  `Fury 155.0.8059.39`. Зависимости ELF проверены `dpkg-shlibdeps`.
+- Содержимое реального `.deb` прошло `verify-core.mjs`: Linux platform/Client Hints,
+  `webdriver=false`, 9 контекстов с 0 расхождений, стабильные WebGL1/2,
+  сохранение cookies и Canvas после перезапуска, загрузка локального Widevine.
+  Canvas: seed 73 → `c06f416c`; seed 74 → `5c4ea2aa`; повторный seed 73 → `c06f416c`.
+  Raw captures и summary находятся в `.build/qa/fury-core-final/` (private/ignored).
+- Во всех шести captures release gate: **12 PASS / 0 FAIL / 1 skip**.
+  Пропущен WebGPU, отсутствующий в этой software-GPU сессии; аппаратный WebGPU
+  этим результатом не подтверждается. Лог: `.build/logs/fury-release-gate.log`.
+- Sandbox: SUID, PID/network namespaces, Seccomp-BPF/TSYNC и Yama включены.
+  После установки `/usr/lib/fury-core/chrome-sandbox` — root:root, mode 4755.
+  AppArmor и глобальные sysctl не изменялись.
+- Upstream C++ verification: 0001 (config/контексты), 0010 (navigator),
+  0011 (UA/Client Hints), 0020 (screen/CSS/iframe), 0081 (timezone),
+  0110 (переносимый ключ cookies) — PASS. Для 0020 использован Xvfb 1600×900,
+  чтобы контроль отличался от заданных 1920×1080. Cookies проверены на отсутствие
+  plaintext и чтение с тем же/другим ключом; неправильный ключ не останавливает браузер.
+- Установленные агент и ядро загрузили `https://example.com/` через HTTP relay
+  агента и реальный upstream. Проверка выполнена с отдельным временным профилем,
+  без отключения проверки TLS-сертификата. Summary: `.build/qa/web-smoke/SUMMARY.json`.
 - 415 unit-тестов прошли: agent 229, platform 20, shared 114, detect 13, desktop 39.
 - В отдельной DBus-сессии с разблокированным GNOME Keyring проверены Unix IPC
   mode 0600, создание Linux-профиля, корзина/восстановление, отсутствие открытого
@@ -114,5 +152,7 @@ dependency. Родительские `node_modules` не изменялись. �
   seccomp sandbox и cross-context проверку, затем ожидаемо отклоняется из-за
   одинакового Canvas у разных seed. Обычный Chrome не выдаётся за Fury core.
 
-Статус этой страницы описывает порт в разработке. Итоговые результаты сборки,
-запуска и fingerprint gate должны быть внесены после фактической проверки.
+При закрытом upstream в QA агент отклонял фоновые обращения Chromium к Google
+(`www.google.com`, `content-autofill.googleapis.com`, `android.clients.google.com`,
+`accounts.google.com`). Это наблюдение о фоновой сетевой активности; содержимое
+этих запросов не исследовалось. Логи локальны в `.build/qa/fury-core-final/`.

@@ -4,9 +4,9 @@
 </picture>
 
 **Linux fork:** this checkout adds an Ubuntu 24.04 x86_64 port based on Fury 0.4.5.
-The native desktop `.deb` and agent have been built and the GUI opened on Linux.
-The patched Chromium core is being built separately; browser/fingerprint validation
-is still required. See [Linux build and validation](docs/20-linux-port.md).
+The desktop and patched Chromium 155 core have been built, installed and tested
+on Linux (X11/Xvfb, SwiftShader). See [packages, setup and validation](docs/20-linux-port.md)
+for the verified scope and the Linux-specific zygote fix.
 
 A free, open-source anti-detect browser with real team collaboration. Own
 Chromium fork, works standalone with no server, self-hostable when you need a
