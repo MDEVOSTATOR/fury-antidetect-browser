@@ -26,6 +26,11 @@ find "$stage/Fury" -type f -exec chmod 644 {} +
 chmod 755 "$stage/Fury/chrome" "$stage/Fury/chrome_crashpad_handler" "$stage/Fury/chrome-sandbox"
 install -m 644 "$FURY_REPO/core/src/LICENSE" "$stage/Fury/LICENSE.chromium"
 install -m 644 "$FURY_REPO/core/patches/LICENSE" "$stage/Fury/LICENSE.fury-patches"
+install -m 644 "$FURY_REPO/NOTICE" "$stage/Fury/NOTICE.fury"
+# Chromium's generated credit page also remains available through chrome://credits.
+if [ -f "$build_dir/gen/components/resources/about_credits.html" ]; then
+  install -m 644 "$build_dir/gen/components/resources/about_credits.html" "$stage/Fury/LICENSES.chromium.html"
+fi
 mkdir -p "$FURY_REPO/dist-linux"
 archive="fury-core-$version-linux-x64.tar.xz"
 tar -cJf "$FURY_REPO/dist-linux/$archive" -C "$stage" Fury
@@ -41,6 +46,7 @@ cp -a "$stage/Fury/." "$debroot/usr/lib/fury-core/"
 mkdir -p "$debroot/usr/share/doc/fury-core"
 cat "$stage/Fury/LICENSE.chromium" "$stage/Fury/LICENSE.fury-patches" > "$debroot/usr/share/doc/fury-core/copyright"
 chmod 644 "$debroot/usr/share/doc/fury-core/copyright"
+install -m 644 "$FURY_REPO/NOTICE" "$debroot/usr/share/doc/fury-core/NOTICE"
 cat > "$debroot/DEBIAN/control" <<EOF
 Package: fury-core
 Version: $version+linux1
