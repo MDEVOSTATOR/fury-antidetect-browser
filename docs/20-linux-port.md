@@ -73,6 +73,8 @@ dependency. Родительские `node_modules` не изменялись. �
 - Тесты запускаются с отдельным `FURY_HOME`; рабочие профили пользователя не трогаются.
 - Linux capture должен сохранять `os.name = Linux`, `navigator.platform = Linux x86_64`
   и Client Hints Linux. Валидаторы запрещают Direct3D/Metal в Linux-персоне.
+  JSON-схема `shared/persona.schema.json` обновлена под текущий формат capture,
+  включая Linux, Client Hints, измеренные значения памяти и частоты аудио.
 - Встроенный upstream-каталог содержит Windows/macOS. Для Linux нужна собственная
   персона из обычного Chrome на целевой машине; искусственные Windows-конфигурации
   не являются заменой проверки на Linux.

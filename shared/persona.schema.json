@@ -6,6 +6,21 @@
   "type": "object",
   "required": ["id", "weight", "os", "gpu", "screen", "chrome_metrics", "cpu", "memory_gb", "fonts", "audio"],
   "additionalProperties": false,
+  "allOf": [{
+    "if": { "properties": { "os": { "properties": { "name": { "const": "Linux" } } } } },
+    "then": {
+      "properties": {
+        "os": { "properties": {
+          "platform": { "const": "Linux x86_64" },
+          "ch_platform": { "const": "Linux" },
+          "user_agent_template": { "pattern": "Linux" }
+        } },
+        "gpu": { "properties": {
+          "webgl_renderer": { "not": { "pattern": "Direct3D|D3D11|Metal" } }
+        } }
+      }
+    }
+  }],
   "properties": {
     "id": {
       "type": "string",
@@ -20,23 +35,31 @@
     },
     "source": {
       "type": "string",
-      "enum": ["measured", "telemetry", "public-dataset"],
+      "enum": ["measured", "capture", "telemetry", "public-dataset"],
       "description": "Where the numbers came from. 'measured' means someone dumped them off a physical machine."
     },
+    "contributed_by": { "type": ["string", "null"] },
+    "machine": { "type": ["string", "null"] },
     "os": {
       "type": "object",
-      "required": ["name", "version", "arch"],
+      "required": ["name", "version", "arch", "user_agent_template", "platform", "ch_platform", "ch_platform_version", "ch_architecture", "ch_bitness"],
       "additionalProperties": false,
       "properties": {
-        "name": { "enum": ["Windows", "macOS"] },
+        "name": { "enum": ["Windows", "macOS", "Linux", "Android"] },
         "version": { "type": "string" },
         "build": { "type": "string" },
-        "arch": { "enum": ["x86_64", "arm64"] }
+        "arch": { "enum": ["x86", "x86_64", "arm", "arm64"] },
+        "user_agent_template": { "type": "string" },
+        "platform": { "type": "string" },
+        "ch_platform": { "type": "string" },
+        "ch_platform_version": { "type": "string" },
+        "ch_architecture": { "type": "string" },
+        "ch_bitness": { "type": "string" }
       }
     },
     "gpu": {
       "type": "object",
-      "required": ["webgl_vendor", "webgl_renderer", "webgl_params", "webgl_extensions"],
+      "required": ["webgl_vendor", "webgl_renderer"],
       "additionalProperties": false,
       "properties": {
         "webgl_vendor": { "type": "string" },
@@ -48,9 +71,9 @@
         },
         "webgl_extensions": { "type": "array", "items": { "type": "string" } },
         "webgpu": {
-          "type": "object",
+          "type": ["object", "null"],
           "description": "Must describe the same physical GPU as the WebGL fields. Leaving this unset while WebGL is spoofed is a ready-made detection vector.",
-          "required": ["vendor", "architecture", "limits", "features"],
+          "required": ["vendor", "architecture"],
           "additionalProperties": false,
           "properties": {
             "vendor": { "type": "string" },
@@ -76,7 +99,7 @@
           "description": "Strictly less than height on macOS — the menu bar is always reserved."
         },
         "color_depth": { "type": "integer", "enum": [24, 30, 32] },
-        "device_pixel_ratio": { "type": "number", "minimum": 1 }
+        "device_pixel_ratio": { "type": "number", "minimum": 0.5, "maximum": 4.5 }
       }
     },
     "chrome_metrics": {
@@ -86,9 +109,10 @@
       "additionalProperties": false,
       "properties": {
         "outer_minus_inner_height": { "type": "integer", "minimum": 0 },
+        "outer_minus_inner_width": { "type": "integer", "minimum": 0 },
         "scrollbar_width": {
           "type": "integer",
-          "description": "0 on macOS (overlay scrollbars), 15-17 on Windows."
+          "description": "0 on macOS; Windows reserves scrollbar width. Linux depends on the compositor and theme."
         }
       }
     },
@@ -98,27 +122,28 @@
       "additionalProperties": false,
       "properties": {
         "cores": { "type": "integer", "minimum": 2, "maximum": 128 },
-        "model": { "type": "string" }
+        "model": { "type": ["string", "null"] }
       }
     },
     "memory_gb": {
       "type": "integer",
-      "enum": [1, 2, 4, 8],
-      "description": "navigator.deviceMemory is quantised by spec. Report the quantised value, not the physical RAM."
+      "minimum": 1,
+      "maximum": 2147483648,
+      "description": "Quantised navigator.deviceMemory from the capture, not physical RAM. The runtime additionally requires a power of two; 16 and 32 occur in the current captures."
     },
     "max_touch_points": { "type": "integer", "minimum": 0, "default": 0 },
     "fonts": {
       "type": "array",
       "minItems": 1,
       "items": { "type": "string" },
-      "description": "Default font set for this OS build. Windows and macOS sets barely overlap; measurement through canvas defeats any list-only filter, so this drives the fallback filter in patch 0050."
+      "description": "Measured font set for this OS build, including Linux. This drives the fallback filter in patch 0050."
     },
     "audio": {
       "type": "object",
-      "required": ["sample_rate"],
+      "required": ["sample_rate", "base_latency", "output_latency"],
       "additionalProperties": false,
       "properties": {
-        "sample_rate": { "type": "integer", "enum": [44100, 48000] },
+        "sample_rate": { "type": "integer", "enum": [8000, 11025, 16000, 22050, 32000, 44100, 48000, 88200, 96000, 176400, 192000] },
         "base_latency": { "type": "number" },
         "output_latency": { "type": "number" }
       }
@@ -138,6 +163,16 @@
           "kind": { "enum": ["audioinput", "audiooutput", "videoinput"] },
           "label_hint": { "type": "string" }
         }
+      }
+    },
+    "mobile": {
+      "type": "object",
+      "required": ["model", "form_factor", "connection"],
+      "additionalProperties": false,
+      "properties": {
+        "model": { "type": "string" },
+        "form_factor": { "enum": ["phone", "tablet"] },
+        "connection": { "enum": ["cellular", "wifi"] }
       }
     },
     "codecs": {
