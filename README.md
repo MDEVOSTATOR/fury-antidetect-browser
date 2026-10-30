@@ -9,6 +9,7 @@ An independent Linux port of [Fury](https://github.com/furyteamtop/fury-antidete
 based on Fury 0.4.5 and patched Chromium 155.0.8059.39. The desktop application,
 agent and browser core have been built, installed and tested on Ubuntu 24.04 x86_64.
 
+**[Linux handoff and operations](docs/22-linux-handoff.md)** ·
 **[Linux build and setup](docs/20-linux-port.md)** ·
 **[Русская версия](README.ru.md)** ·
 **[Upstream project](https://github.com/furyteamtop/fury-antidetect-browser)**

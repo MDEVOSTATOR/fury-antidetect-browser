@@ -9,6 +9,7 @@
 на базе Fury 0.4.5 и Chromium 155.0.8059.39 с патчами. Приложение, агент и ядро
 собраны, установлены и проверены на Ubuntu 24.04 x86_64.
 
+**[Состояние и эксплуатация Linux](docs/22-linux-handoff.md)** ·
 **[Сборка и настройка Linux](docs/20-linux-port.md)** ·
 **[English version](README.md)** ·
 **[Исходный проект](https://github.com/furyteamtop/fury-antidetect-browser)**

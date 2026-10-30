@@ -1,5 +1,25 @@
 # 09 — План работ
 
+
+## План Linux-форка на 30.10.2026
+
+Проверенный набор остаётся на Fury0.4.5. **[Handoff](22-linux-handoff.md)** —
+источник версий, результатов и условий повторной проверки.
+
+- [x] Desktop/agent/core для Ubuntu24.04 x86_64, Debian-пакеты и root-owned sandbox.
+- [x] Linux zygote/config, capture/schema, private Widevine staging и keyring.
+- [x] Software X11 и native Weston Wayland, явный X11 override, HTTPS proxy TLS.
+- [x] Опубликованы исходники, результаты и ограничения тестов; Linux binary release отсутствует.
+- [ ] Review и интеграция 33 новых upstream commits до 0.4.18 с отдельной сборкой и тестами.
+- [ ] Hardware GPU/WebGPU и интерактивные GNOME/KDE/Hyprland sessions.
+- [ ] Условия для голосов, media devices, WebRTC baseline ICE и battery controls.
+- [ ] Linux team-mode E2E, проверка PR13 после review/пересборки core.
+- [ ] CI push-trigger Linux-ветки и проверенный binary release с source pin/checksums.
+
+Ниже сохранён исторический план upstream; его закрытые пункты относятся
+к указанным там платформам и датам.
+
+
 Фазы, у каждой — критерий выхода. Фаза не считается закрытой, пока критерий не выполнен
 измеримо, а не «вроде готово».
 

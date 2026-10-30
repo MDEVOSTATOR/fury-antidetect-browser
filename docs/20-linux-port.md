@@ -1,5 +1,9 @@
 # Linux x86_64 port
 
+[Указатель документации](README.md) · [Актуальная передача проекта](22-linux-handoff.md).
+Сборочные и runtime-результаты ниже относятся к 16.10.2026; сверка установки
+и артефактов 30.10.2026 описана в handoff.
+
 Публичный форк: [MDEVOSTATOR/fury-antidetect-browser](https://github.com/MDEVOSTATOR/fury-antidetect-browser).
 Основная ветка форка — Linux-адаптация. В GitHub опубликованы исходники;
 готовые Linux-пакеты в Releases ещё не загружены. Перечисленные ниже артефакты
