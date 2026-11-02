@@ -1,8 +1,9 @@
 # Fury Linux: состояние, эксплуатация и передача проекта
 
-Документация сверена **30.10.2026**. Последние зафиксированные здесь браузерные и интеграционные
-тесты выполнены **16.10.2026**. Сегодня проверены Git, метаданные установки,
-целостность пакетов и SHA256 локальных артефактов; runtime-тесты не повторялись.
+Документация обновлена **02.11.2026** после [исправления CSS system colours](23-css-system-colors.md).
+Последние браузерные проверки выполнены 02.11.2026: новое ядро linux2, 53 утверждения
+для Windows colours в X11/Wayland, Linux full probes и installed smoke.
+Исторические полные прогоны 16.10 и read-only inventory 30.10 отмечены отдельно.
 
 ## Состояние и версии
 
@@ -11,20 +12,25 @@
 | Публичный форк | [MDEVOSTATOR/fury-antidetect-browser](https://github.com/MDEVOSTATOR/fury-antidetect-browser) |
 | Основная ветка форка | `port/linux-x64` |
 | База | Fury 0.4.5, upstream `a8130657be78ac812d0b96d34003c19126da1a29` |
-| Проверенный код Linux-порта | `6a0fdf700f4a7ef00c5e66183cf2e0560fbf6fb8`; последующие документационные коммиты не означают пересборку |
+| Проверенный код Linux-порта | `331e8ff2624f717990098e965bf140911e222acd`; последующие документационные коммиты не означают пересборку |
 | Chromium | 155.0.8059.39, source `3ff7ac5a9224be9156d7f8703a06e22890aafd34` |
-| Серия патчей | 37: 36 upstream + Linux zygote patch 0002 |
+| Серия патчей | 38: 36 upstream + Linux zygote0002 + CSS system colours0022 |
 | Целевая система | Ubuntu 24.04 x86_64; GTK3 / WebKitGTK4.1 |
-| Установленные пакеты | `fury 0.4.5`, `fury-core 0.4.5+linux1` |
+| Установленные пакеты | `fury 0.4.5`, `fury-core 0.4.5+linux2` |
 | Проверенная графика | X11/Xvfb и native Wayland на Weston13 headless/Pixman; SwiftShader |
 | Не подтверждено | Hardware GPU/WebGPU, интерактивные GNOME/KDE/Hyprland, другие дистрибутивы и Linux team-mode E2E |
-| Доставка | Исходники опубликованы; на 30.10.2026 в GitHub Releases форка нет Linux-бинарников |
+| Доставка | Исходники опубликованы; на 02.11.2026 в GitHub Releases форка нет Linux-бинарников |
 
 При fetch 30.10.2026 upstream main оказался на **33 коммита впереди**
 относительно зафиксированной базы: версия 0.4.18, commit `2ac7a7ac5f15c2a5184914555a13c65e6094fc76`
 от 28.10.2026. Эти изменения не интегрированы: документационная сверка
 не является обновлением приложения. Исторический разбор issues от 16 октября
 не следует читать как текущий статус всех upstream issues.
+
+При fetch02.11.2026 upstream уже содержит0.4.20, commit `7b4fe8a167fdb0bd74331e836e888d0a83ce4973`;
+не интегрированы40коммитов. CSS fix сделан поверх проверенной базы0.4.5.
+В отдельный review входят и обновления зависимостей, в частности upstream
+переход Rustls на0.23.46 (commit05c5d48); этот набор не переносился вместе с CSS.
 
 ## Карта документации
 
@@ -34,6 +40,7 @@
 - [Архитектура приложения](01-architecture.md), [Chromium и патчи](03-chromium-fork.md).
 - [Проверки реального браузера](../core/verify/README.md).
 - [План Linux-форка и исторический план upstream](09-roadmap.md).
+- [CSS system colours: воспроизведение, patch и runtime A/B](23-css-system-colors.md).
 - [Общий указатель](README.md).
 
 ## Устройство и важные файлы
@@ -66,6 +73,7 @@
 | Первая валидация, `a19f760` | Собран и установлен Chromium155 с 37 патчами, сохранены результаты |
 | Переносимые тесты, `87e3cb6` | Выбор доступных шрифтов, учёт classic scrollbar, Linux executable branding |
 | Выборочные backports, `6a0fdf7` | Native Wayland/X11 selection и проверенный TLS к HTTPS-прокси из PR10 |
+| CSS colours, `331e8ff` | Windows light palette, renderer Highlight,53 assertions; package revision2 и isolated candidate output |
 
 Отдельно исправлены ложные срабатывания detect-suite: cross-context control
 использует одинаковый ASCII/Arial, основной Unicode Canvas fingerprint сохранён.
@@ -104,12 +112,15 @@ Chromium revision или patch series требует пересборки и п�
 
 ```sh
 (cd dist-linux && sha256sum -c SHA256SUMS-shell)
-(cd dist-linux && sha256sum -c fury-core_0.4.5+linux1_amd64.deb.sha256)
+(cd dist-linux && sha256sum -c fury-core_0.4.5+linux2_amd64.deb.sha256)
 tools/linux/install.sh
 fury-desktop
 ```
 
-Installer вызывает apt с обычным подтверждением. Для заранее согласованной
+Installer вызывает apt --reinstall с обычным подтверждением: exact core dependency
+обновляется и при прежней upstream-версии desktop.
+Linux revision задаётся в core/LINUX_PACKAGE_REVISION, Tauri dependency проверяется build-shell.
+Новые пакеты можно складывать в отдельный output directory для QA перед установкой. Для заранее согласованной
 неинтерактивной установки после проверки checksum использовался apt-get -y
 с явными путями к обоим пакетам. Установленный helper должен быть root:root4755
 в root-owned каталоге. Tar-архив предназначен для разработчика и сам по себе
@@ -124,18 +135,18 @@ stat -c '%U:%G %a %n' /usr/lib/fury-core/chrome-sandbox
 
 ## Локальные артефакты
 
-Сверены 30.10.2026 с `dist-linux/BUILD-INFO.json`:
+Сверены02.11.2026 с `dist-linux/BUILD-INFO.json`:
 
 | Файл | Bytes | SHA256 |
 |---|---:|---|
-| `Fury_0.4.5_amd64.deb` | 13815280 | `73c2db7448a032cb2c18b6113434cf8496b17c264d7e00989d63577f403709a4` |
-| `fury-core-0.4.5-linux-x64.tar.xz` | 148878904 | `072cf33bc2745e92c9f60abeb8dcaf43f59ea98e28eb56d1b098f347040649f8` |
-| `fury-core_0.4.5+linux1_amd64.deb` | 157778652 | `7797118c03a144e45de31456c35d2bedaee2aa4e20fe38654cbe3a45b17c1237` |
+| `Fury_0.4.5_amd64.deb` | 13815294 | `ca619add08c472169aba6e1ca0a4256ae90d48ce42b50b31e1644c6a2bdec491` |
+| `fury-core-0.4.5-linux-x64-r2.tar.xz` | 148807960 | `6cbea7d45f1b3f2225df6ebb426c4dbe66e2d30b3b48aa7302077724bb17985b` |
+| `fury-core_0.4.5+linux2_amd64.deb` | 157714552 | `78269c81a844af86f8081841acc75b710dbe119b0281d0c3289c6d6cdb8e214f` |
 
 SHA256 установленного `/usr/bin/fury-agent`:
 `8567e2a5ec41cd4cd324b056639ff4bbb37a94ff0c812a8e1ffcfbee818fb311`.
 Он совпадал с протестированным release-agent при установке 16 октября;
-30 октября повторно проверены пакетная целостность и текущее значение hash.
+30 октября и2ноября повторно проверены пакетная целостность и текущее значение hash.
 
 В пакетах сохранены LICENSE/NOTICE и сгенерированные Chromium credits.
 Проприетарный Widevine CDM не распространяется в комплекте.
@@ -175,22 +186,23 @@ QA не должен открывать или менять рабочие бр�
 
 ## Результаты проверок
 
-Это результаты **16.10.2026**, а не новые прогоны 30 октября.
+У каждой группы указана дата; исторический полный набор не выдаётся за новый прогон.
 
 | Уровень | Результат и границы |
 |---|---|
-| Первоначальные unit-тесты | 415 PASS: agent229, shared114, platform20, detect13, desktop39 |
-| После backport PR10 | `cargo test -p fury-agent`: 236 PASS / 0 FAIL; это отдельный поздний прогон изменённого crate |
+| Первоначальные unit-тесты,16.10 | 415 PASS: agent229, shared114, platform20, detect13, desktop39 |
+| После backport PR10,16.10 | `cargo test -p fury-agent`: 236 PASS / 0 FAIL; это отдельный поздний прогон изменённого crate |
 | Расширенный C++/CDP | Первый прогон 25/33 PASS; после целевых исправлений и повторов 29 PASS, 4 не подтверждены |
 | Не подтверждены | 0041 голоса, 0060 устройства, 0070 baseline ICE, 0121 батарея: отсутствуют нужные контрольные состояния |
 | Не запускались | 0032 WebGPU, 0903 macOS, 0902 с намеренным no-sandbox control |
 | DPR | 28/28 на явно виртуальном 2x display; это не физический HiDPI GPU |
-| Gate X11 и Wayland | По шесть captures на backend; в каждом 12 PASS / 0 FAIL / 1 WebGPU skip |
+| Gate X11 и Wayland,02.11 | По шесть новых captures на backend; в каждом12PASS/0FAIL/1WebGPUskip |
+| CSS0022,02.11 | Старое ядро21/53FAIL; новое53/53PASS отдельноX11/nativeWayland; публичныйplatformMismatch0.5→-1 |
 | Шифрование cookies | Нет plaintext на диске; тот же ключ читает, другой не читает; браузер остаётся работоспособным |
-| Agent storage | Create/trash/restore, IPC0600, encrypted SQLite secrets и чтение после restart |
+| Agent storage, повтор02.11 | Create/trash/restore, IPC0600, encrypted SQLite secrets и чтение после restart |
 | HTTPS proxy | Доверенная CA: auth CONNECT и payload внутри TLS; чужая CA/hostname mismatch:502 до отправки credentials |
-| Установленный GUI | Запуск X11 и native Wayland, IPC с агентом, найдено пакетное ядро; screenshots проверены |
-| Network smoke | HTTPS example.com через HTTP relay; проверка сертификата сайта не отключалась |
+| Установленный GUI,16.10 | Запуск X11 и native Wayland, IPC с агентом, найдено пакетное ядро; screenshots проверены |
+| Network smoke,16.10 | HTTPS example.com через HTTP relay; проверка сертификата сайта не отключалась |
 
 Тест 0303 не достигает native bookmark export dialog; эту ветку проверенной
 не считаем. Полный набор C++/CDP не объявляется зелёным.
@@ -245,8 +257,9 @@ production defaults. Для native Wayland нужен отдельный composi
 | `.build/qa/validation-20261016T185631Z/` | 33-сценарный прогон, targeted reruns, JSON summary, GUI screenshot |
 | `.build/upstream-review/` | Snapshot issues/PR/comments/diffs, unit/release/package/install logs и CLI TLS smoke helper |
 | `.build/upstream-review/runtime-20261016T192133Z/` | Native Wayland/X11 captures, gate logs, установленный GUI и screenshot |
-| `.build/documentation-audit-20261030.json` | Read-only inventory сегодняшней документационной сверки |
-| `dist-linux/BUILD-INFO.json` | Source pins, baseline/поздние тесты, package hashes и validation metadata |
+| `.build/link-colors-review/` | CSS before/after,53 assertions, new Linux probes, installed detector, rollback packages |
+| `.build/documentation-audit-20261030.json` | Исторический read-only inventory 30.10.2026 |
+| `dist-linux/BUILD-INFO.json` | Source 331e8ff, 38 patches, linux2, historical unit dates and fresh CSS/browser validation metadata |
 | `.build/linux-core.phase` | `validated-installed`; историческая отметка, не процесс мониторинга runtime |
 
 Эти пути игнорируются Git и не приезжают с clone. Исторические helper scripts

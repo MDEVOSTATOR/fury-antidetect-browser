@@ -1,7 +1,7 @@
 # 09 — План работ
 
 
-## План Linux-форка на 30.10.2026
+## План Linux-форка на 02.11.2026
 
 Проверенный набор остаётся на Fury0.4.5. **[Handoff](22-linux-handoff.md)** —
 источник версий, результатов и условий повторной проверки.
@@ -9,8 +9,9 @@
 - [x] Desktop/agent/core для Ubuntu24.04 x86_64, Debian-пакеты и root-owned sandbox.
 - [x] Linux zygote/config, capture/schema, private Widevine staging и keyring.
 - [x] Software X11 и native Weston Wayland, явный X11 override, HTTPS proxy TLS.
+- [x] CSS system-colour leak Windows-персоны: core linux2,38patches,53 checks наX11/Wayland, [отчёт](23-css-system-colors.md).
 - [x] Опубликованы исходники, результаты и ограничения тестов; Linux binary release отсутствует.
-- [ ] Review и интеграция 33 новых upstream commits до 0.4.18 с отдельной сборкой и тестами.
+- [ ] Review и интеграция 40 новых upstream commits до 0.4.20 с отдельной сборкой и тестами.
 - [ ] Hardware GPU/WebGPU и интерактивные GNOME/KDE/Hyprland sessions.
 - [ ] Условия для голосов, media devices, WebRTC baseline ICE и battery controls.
 - [ ] Linux team-mode E2E, проверка PR13 после review/пересборки core.

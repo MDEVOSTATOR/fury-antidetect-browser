@@ -1,8 +1,9 @@
 # Linux x86_64 port
 
 [Указатель документации](README.md) · [Актуальная передача проекта](22-linux-handoff.md).
-Сборочные и runtime-результаты ниже относятся к 16.10.2026; сверка установки
-и артефактов 30.10.2026 описана в handoff.
+Исторические результаты ниже датированы 16.10.2026; новое ядроlinux2
+и runtime-проверки 02.11.2026 описаны в [CSS fix](23-css-system-colors.md).
+Актуальные версии/артефакты собраны в handoff.
 
 Публичный форк: [MDEVOSTATOR/fury-antidetect-browser](https://github.com/MDEVOSTATOR/fury-antidetect-browser).
 Основная ветка форка — Linux-адаптация. В GitHub опубликованы исходники;
@@ -14,7 +15,7 @@
 дистрибутивов и интерактивных Wayland-десктопов нужно проверять отдельно.
 
 Приложение и ядро собраны и установлены. Запуск: меню приложений **Fury** либо
-`fury-desktop`. Установленные пакеты: `fury 0.4.5` и `fury-core 0.4.5+linux1`.
+`fury-desktop`. Установленные пакеты: `fury 0.4.5` и `fury-core 0.4.5+linux2`.
 Проверены X11/Xvfb, браузер и запуск интерфейса на отдельном native Wayland compositor
 Weston/Pixman со SwiftShader. Аппаратный GPU и интерактивные GNOME/KDE/Hyprland
 сессии отдельно не проверялись. [Разбор upstream и новые проверки](21-upstream-linux-review.md).
@@ -22,9 +23,9 @@ Weston/Pixman со SwiftShader. Аппаратный GPU и интерактив
 Комплект в `dist-linux/`:
 
 - `Fury_0.4.5_amd64.deb` — оболочка и агент;
-- `fury-core_0.4.5+linux1_amd64.deb` — Chromium с патчами и sandbox helper;
+- `fury-core_0.4.5+linux2_amd64.deb` — Chromium с патчами и sandbox helper;
 - `.sha256` / `SHA256SUMS-shell` — контрольные суммы;
-- `fury-core-0.4.5-linux-x64.tar.xz` — архив runtime для разработчиков.
+- `fury-core-0.4.5-linux-x64-r2.tar.xz` — архив runtime для разработчиков.
 
 Для Ubuntu рекомендуется установка двух `.deb` через `tools/linux/install.sh`.
 
@@ -58,7 +59,9 @@ Linux `.deb` оболочки зависит от `fury-core`: устанавл�
 
 Ядро собирается из Chromium с полной последовательностью патчей Fury:
 
-В Linux-ветке 37 патчей: 36 upstream и `0002-linux-zygote-config.patch`.
+В Linux-ветке 38 патчей: 36 upstream, `0002-linux-zygote-config.patch`
+и `0022-css-system-colors.patch`. Linux core revision хранится в
+`core/LINUX_PACKAGE_REVISION`; точная зависимость Tauri проверяется при сборке.
 Linux создаёт sandboxed renderer/utility процессы через zygote/fork; они обходят
 обычный `Initialize()`. Дополнительный патч загружает уже переданный shared-memory
 fingerprint после fork, до thread pool и renderer initialization. Sandbox сохраняется.

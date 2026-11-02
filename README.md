@@ -17,7 +17,7 @@ agent and browser core have been built, installed and tested on Ubuntu 24.04 x86
 ## Linux port
 
 - Native Tauri desktop and agent, packaged as two matching Debian packages.
-- Chromium with 37 patches, including a Linux zygote fix that loads the profile
+- Chromium with 38 patches, including a Linux zygote fix that loads the profile
   configuration in forked child processes while preserving the sandbox.
 - Linux persona capture and validation, Secret Service integration and per-profile
   staging of Widevine from a locally installed Chrome.
@@ -25,6 +25,7 @@ agent and browser core have been built, installed and tested on Ubuntu 24.04 x86
 | Item | Status |
 |---|---|
 | Target platform | Ubuntu 24.04 x86_64 |
+| Linux core package | 0.4.5+linux2; [Windows persona light-colour fix](docs/23-css-system-colors.md) |
 | Desktop and browser | Built and tested under X11/Xvfb |
 | Graphics validation | SwiftShader; WebGL 1 and 2 |
 | Extended browser tests | 29 passed; 4 unverified due to test-host prerequisites ([details](docs/20-linux-port.md#расширенный-прогон-16102026)) |

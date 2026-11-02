@@ -45,3 +45,17 @@ scrollbars, and 0900 checks the executable's version on Linux while retaining
 the app-bundle checks on macOS. 0131-dpr requires a 2x baseline display; virtual
 scaling is acceptable when explicitly recorded. Hardware-dependent controls
 must not be reported as passing when the host cannot exercise them.
+
+
+## CSS system colours (0022)
+
+[verify-0022.py](verify-0022.py) uses private loopback pages on a non-Windows
+host. It checks native/Linux controls, stock Windows light colours, actual
+canvas paint, same-origin and cross-site frames, dark/forced controls, a new
+tab and restart. The optional second argument stores private JSON evidence.
+Use an isolated display/DBus/keyring session; installed root-owned sandbox
+is required on the validated Ubuntu24 host. [Measured fix and scope](../../docs/23-css-system-colors.md).
+
+Legacy CSS Scrollbar resolves as Canvas in this Chromium; its internal colour
+ID has a different meaning. Public keyword expectations follow LayoutTheme,
+not a blind copy of renderer-map values.
