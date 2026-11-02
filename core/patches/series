@@ -117,6 +117,8 @@
 # verify-0021.py against on a Windows machine, and it is not "done" until that
 # has happened.
 0021-scrollbar-width.patch
+# Windows personas use the stock Windows light system-colour provider.
+0022-css-system-colors.patch!
 
 # --- graphics ---------------------------------------------------------------
 # Noise is applied at READBACK, never at drawing — the canvas keeps rendering

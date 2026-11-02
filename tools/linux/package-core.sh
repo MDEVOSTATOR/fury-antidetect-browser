@@ -4,6 +4,9 @@
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
 build_dir="${1:-$FURY_REPO/core/src/out/linux-x64.noindex}"
+dist_dir="${2:-$FURY_REPO/dist-linux}"
+mkdir -p "$dist_dir"
+dist_dir="$(cd "$dist_dir" && pwd)"
 version="$(sed -n '/^\[workspace.package\]/,/^\[/p' "$FURY_REPO/Cargo.toml" | sed -n 's/^version = "\([^"]*\)"/\1/p')"
 [ -n "$version" ] || { echo "Cannot determine Fury version" >&2; exit 1; }
 "$build_dir/chrome" --version
@@ -32,11 +35,10 @@ install -m 644 "$FURY_REPO/NOTICE" "$stage/Fury/NOTICE.fury"
 if [ -f "$build_dir/gen/components/resources/about_credits.html" ]; then
   install -m 644 "$build_dir/gen/components/resources/about_credits.html" "$stage/Fury/LICENSES.chromium.html"
 fi
-mkdir -p "$FURY_REPO/dist-linux"
-archive="fury-core-$version-linux-x64.tar.xz"
-tar -cJf "$FURY_REPO/dist-linux/$archive" -C "$stage" Fury
-(cd "$FURY_REPO/dist-linux" && sha256sum "$archive" > "$archive.sha256")
-echo "$FURY_REPO/dist-linux/$archive"
+archive="fury-core-$version-linux-x64-r$FURY_LINUX_CORE_REVISION.tar.xz"
+tar -cJf "$dist_dir/$archive" -C "$stage" Fury
+(cd "$dist_dir" && sha256sum "$archive" > "$archive.sha256")
+echo "$dist_dir/$archive"
 
 # A root-owned installation lets Chromium use its setuid sandbox on Ubuntu
 # hosts where AppArmor denies user namespaces to arbitrary downloaded binaries.
@@ -50,7 +52,7 @@ chmod 644 "$debroot/usr/share/doc/fury-core/copyright"
 install -m 644 "$FURY_REPO/NOTICE" "$debroot/usr/share/doc/fury-core/NOTICE"
 cat > "$debroot/DEBIAN/control" <<EOF
 Package: fury-core
-Version: $version+linux1
+Version: $version+linux$FURY_LINUX_CORE_REVISION
 Architecture: amd64
 Maintainer: Fury Linux port <noreply@localhost>
 Section: web
@@ -69,6 +71,6 @@ fi
 EOF
 chmod 755 "$debroot/DEBIAN/postinst"
 find "$debroot" -type d -exec chmod 755 {} +
-debname="fury-core_${version}+linux1_amd64.deb"
-dpkg-deb --build --root-owner-group --threads-max=2 "$debroot" "$FURY_REPO/dist-linux/$debname"
-(cd "$FURY_REPO/dist-linux" && sha256sum "$debname" > "$debname.sha256")
+debname="fury-core_${version}+linux${FURY_LINUX_CORE_REVISION}_amd64.deb"
+dpkg-deb --build --root-owner-group --threads-max=2 "$debroot" "$dist_dir/$debname"
+(cd "$dist_dir" && sha256sum "$debname" > "$debname.sha256")

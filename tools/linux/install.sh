@@ -14,4 +14,6 @@ cores=(fury-core_*_amd64.deb)
 }
 sha256sum -c SHA256SUMS-shell
 sha256sum -c "${cores[0]}.sha256"
-sudo apt-get install "$(pwd)/${shells[0]}" "$(pwd)/${cores[0]}"
+# A Linux core revision may change while the upstream desktop version stays
+# unchanged. Reinstall the local shell so its exact core dependency is updated.
+sudo apt-get install --reinstall "$(pwd)/${shells[0]}" "$(pwd)/${cores[0]}"

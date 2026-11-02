@@ -11,6 +11,12 @@ if [ "$(uname -s)" = Linux ] && [ -x /usr/bin/chrt ]; then
   unset FURY_INHERITED_NICE
 fi
 FURY_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+FURY_LINUX_CORE_REVISION="$(cat "$FURY_REPO/core/LINUX_PACKAGE_REVISION")"
+if ! [[ "$FURY_LINUX_CORE_REVISION" =~ ^[1-9][0-9]*$ ]]; then
+  echo "Invalid Linux core package revision" >&2
+  return 1
+fi
+export FURY_LINUX_CORE_REVISION
 if [ -x "$FURY_REPO/.build/cargo/bin/rustup" ]; then
   export CARGO_HOME="$FURY_REPO/.build/cargo"
   export RUSTUP_HOME="$FURY_REPO/.build/rustup"

@@ -1,0 +1,121 @@
+diff --git a/content/browser/web_contents/web_contents_impl.cc b/content/browser/web_contents/web_contents_impl.cc
+--- a/content/browser/web_contents/web_contents_impl.cc
++++ b/content/browser/web_contents/web_contents_impl.cc
+@@ -223,6 +223,7 @@
+ #include "third_party/blink/public/mojom/page/draggable_region.mojom.h"
+ #include "third_party/blink/public/mojom/window_features/window_features.mojom.h"
+ #include "third_party/skia/include/core/SkBitmap.h"
++#include "third_party/skia/include/core/SkColor.h"
+ #include "ui/accessibility/ax_tree_combiner.h"
+ #include "ui/accessibility/platform/browser_accessibility.h"
+ #include "ui/accessibility/platform/browser_accessibility_manager.h"
+@@ -233,6 +234,7 @@
+ #include "ui/base/ui_base_features.h"
+ #include "ui/base/ui_base_types.h"
+ #include "ui/base/window_open_disposition.h"
++#include "ui/color/color_id.mojom.h"
+ #include "ui/color/color_provider_key.h"
+ #include "ui/color/color_provider_manager.h"
+ #include "ui/color/color_provider_utils.h"
+@@ -8884,6 +8886,39 @@
+   return page_base_background_color_;
+ }
+ 
++#if !BUILDFLAG(IS_WIN)
++namespace {
++
++// fury: Windows resolves CSS system colours from the native Win32 palette in
++// the light scheme (ui/color/win/css_system_color_mixer_win.cc); the built-in
++// cross-platform palette used on Linux and macOS differs, and since M138 its
++// ActiveText is pure red. A Linux build whose config claims a Windows machine
++// must send the Windows values to the renderer, or the page reads the OS off
++// the colour alone. Values are the stock Windows 10/11 theme defaults
++// (HKCU\Control Panel\Colors), i.e. what GetSysColor() returns on a machine
++// nobody has recoloured. Dark and forced-colors maps are left alone: Windows
++// Chrome uses the built-in palette in dark mode too.
++void FuryApplyWindowsCssSystemColors(ui::RendererColorMap& map) {
++  const SkColor hotlight = SkColorSetRGB(0x00, 0x66, 0xCC);  // COLOR_HOTLIGHT
++  map[::color::mojom::RendererColorId::kColorCssSystemActiveText] = hotlight;
++  map[::color::mojom::RendererColorId::kColorCssSystemHotlight] = hotlight;
++  map[::color::mojom::RendererColorId::kColorCssSystemLinkText] = hotlight;
++  map[::color::mojom::RendererColorId::kColorCssSystemVisitedText] = hotlight;
++  map[::color::mojom::RendererColorId::kColorCssSystemHighlight] =
++      SkColorSetRGB(0x00, 0x78, 0xD7);  // COLOR_HIGHLIGHT
++  map[::color::mojom::RendererColorId::kColorCssSystemMenuHilight] =
++      SkColorSetRGB(0x00, 0x78, 0xD7);  // COLOR_MENUHILIGHT
++  map[::color::mojom::RendererColorId::kColorCssSystemBtnFace] =
++      SkColorSetRGB(0xF0, 0xF0, 0xF0);  // COLOR_BTNFACE
++  map[::color::mojom::RendererColorId::kColorCssSystemGrayText] =
++      SkColorSetRGB(0x6D, 0x6D, 0x6D);  // COLOR_GRAYTEXT
++  map[::color::mojom::RendererColorId::kColorCssSystemScrollbar] =
++      SkColorSetRGB(0xF0, 0xF0, 0xF0);  // COLOR_SCROLLBAR
++}
++
++}  // namespace
++#endif  // !BUILDFLAG(IS_WIN)
++
+ blink::ColorProviderColorMaps WebContentsImpl::GetColorProviderColorMaps()
+     const {
+   const auto* color_mode_source = GetColorProviderSource();
+@@ -8899,7 +8934,7 @@
+     forced_colors = ui::ColorProviderKey::ForcedColors::kSystem;
+   }
+ 
+-  return blink::ColorProviderColorMaps{
++  blink::ColorProviderColorMaps color_maps{
+       color_mode_source->GetRendererColorMap(
+           ui::ColorProviderKey::ColorMode::kLight,
+           ui::ColorProviderKey::ForcedColors::kNone),
+@@ -8908,6 +8943,18 @@
+           ui::ColorProviderKey::ForcedColors::kNone),
+       forced_colors_source->GetRendererColorMap(
+           forced_colors_source->GetColorMode(), forced_colors)};
++
++#if !BUILDFLAG(IS_WIN)
++  if (const fury::FuryConfig* config = fury::FuryConfig::Get()) {
++    const std::optional<std::string> platform =
++        config->GetString("navigator.platform");
++    if (platform && *platform == "Win32") {
++      FuryApplyWindowsCssSystemColors(color_maps.light_colors_map);
++    }
++  }
++
++#endif  // !BUILDFLAG(IS_WIN)
++  return color_maps;
+ }
+ 
+ void WebContentsImpl::PrintCrossProcessSubframe(
+diff --git a/third_party/blink/renderer/core/layout/layout_theme.cc b/third_party/blink/renderer/core/layout/layout_theme.cc
+--- a/third_party/blink/renderer/core/layout/layout_theme.cc
++++ b/third_party/blink/renderer/core/layout/layout_theme.cc
+@@ -22,6 +22,7 @@
+ #include "third_party/blink/renderer/core/layout/layout_theme.h"
+ 
+ #include "build/build_config.h"
++#include "components/fury/fury_config.h"
+ #include "third_party/blink/public/common/renderer_preferences/renderer_preferences.h"
+ #include "third_party/blink/public/resources/grit/blink_resources.h"
+ #include "third_party/blink/public/strings/grit/blink_strings.h"
+@@ -864,6 +865,22 @@
+     const ui::ColorProvider* color_provider) const {
+   SkColor system_highlight_color =
+       color_provider->GetColor(ui::kColorCssSystemHighlight);
++#if !BUILDFLAG(IS_WIN)
++  // Only our Windows light provider has both link colours set to HOTLIGHT.
++  // Keep native/dark/forced providers on their original rendering path.
++  if (color_scheme == mojom::blink::ColorScheme::kLight &&
++      color_provider->GetColor(ui::kColorCssSystemActiveText) ==
++          SkColorSetRGB(0x00, 0x66, 0xCC) &&
++      color_provider->GetColor(ui::kColorCssSystemVisitedText) ==
++          SkColorSetRGB(0x00, 0x66, 0xCC)) {
++    if (const fury::FuryConfig* config = fury::FuryConfig::Get();
++        config && config->GetString("navigator.platform").value_or("") ==
++                      "Win32") {
++      // LayoutThemeWin returns an opaque highlight; Linux blends with white.
++      return Color::FromSkColor(system_highlight_color);
++    }
++  }
++#endif
+   return Color::FromSkColor(system_highlight_color).BlendWithWhite();
+ }
+ 
